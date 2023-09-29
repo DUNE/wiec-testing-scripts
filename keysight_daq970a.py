@@ -7,9 +7,10 @@ Created on Wed Sept 25 10:51:58 2023
 
 class Keysight970A:
     def __init__(self, rm, json_data):
+        self.prefix = "Keysight DAQ 970A"
         self.json_data = json_data
         self.keysight = rm.open_resource(self.json_data['keysight970a'])
-        print(f"keysight DAQ 970A --> Connected to {self.keysight.query('*IDN?')}")
+        print(f"{self.prefix} --> Connected to {self.keysight.query('*IDN?')}")
         self.keysight.write("*RST")
 
     def initialize(self):
