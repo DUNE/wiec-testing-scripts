@@ -13,42 +13,159 @@ class Keysight970A:
         print(f"{self.prefix} --> Connected to {self.keysight.query('*IDN?')}")
         self.keysight.write("*RST")
 
-    def initialize(self):
+        #Common commands
+        self.keysight.write("FORMat:READing:CHANnel ON")
+
+        #Keeps track of state to make sure commands don't collide
+        self.state = None
+
         #Build the string of the list of RTD channels
-        rtd_ch_list = ""
+        self.rtd_ch_list = ""
+        self.rtd_convert = {}
         rtd_slot = self.json_data['keysight970a_901A_slot']
-        for i in range(1,5,1):
+        self.num_rtds = int(self.json_data['keysight970a_rtd_num'])
+        for i in range(1,self.num_rtds+1,1):
             ch_num = int(self.json_data[f'keysight970a_rtd_ch{i}'])
             ch_string = f"{rtd_slot}{ch_num:02d}"
+            self.rtd_convert[f"{ch_string}"] = i
             if (i == 1):
-                rtd_ch_list += (f"@{ch_string}")
+                self.rtd_ch_list += (f"@{ch_string}")
             else:
-                rtd_ch_list += (f",{ch_string}")
+                self.rtd_ch_list += (f",{ch_string}")
 
+        #Build the string of the list of heater channels
+        self.heater_ch_list = ""
+        self.heater_convert = {}
+        heater_slot = self.json_data['keysight970a_901A_slot']
+        self.num_heaters = int(self.json_data['keysight970a_heater_num'])
+        for i in range(1,self.num_heaters+1,1):
+            ch_num = int(self.json_data[f'keysight970a_heater_ch{i}'])
+            ch_string = f"{heater_slot}{ch_num:02d}"
+            self.heater_convert[f"{ch_string}"] = i
+            if (i == 1):
+                self.heater_ch_list += (f"@{ch_string}")
+            else:
+                self.heater_ch_list += (f",{ch_string}")
+
+        supply_string = f"{heater_slot}{int(self.json_data[f'keysight970a_heater_supply']):02d}"
+        self.heater_ch_list_power = self.heater_ch_list + (f",{supply_string}")
+
+        #Build the string of the list of fan channels
+        self.fan_ch_list = ""
+        self.fan_convert = {}
+        fan_slot = self.json_data['keysight970a_901A_slot']
+        self.num_fans = int(self.json_data['keysight970a_fan_num'])
+        for i in range(1,self.num_fans+1,1):
+            ch_num = int(self.json_data[f'keysight970a_fan_ch{i}'])
+            ch_string = f"{fan_slot}{ch_num:02d}"
+            self.fan_convert[f"{ch_string}"] = i
+            if (i == 1):
+                self.fan_ch_list += (f"@{ch_string}")
+            else:
+                self.fan_ch_list += (f",{ch_string}")
+
+    def clear_scan_list(self):
+        self.keysight.write("ROUTe:SCAN (@)")
+
+    def initialize_rtd(self):
         #Keysight DAQ970A requires you to do a Configure first and then change the parameters with Sense
         #Configure sets the resistance of the RTD, and default resolution
-        self.keysight.write(f"CONFigure:TEMPerature:FRTD {self.json_data['keysight970a_rtd_RES']},DEF,({rtd_ch_list})")
+        #It also updates the scan list so only the channels in this Configure command are scanned
+        self.keysight.write(f"CONFigure:TEMPerature:FRTD {self.json_data['keysight970a_rtd_RES']},DEF,({self.rtd_ch_list})")
 
         #Sets the sample rate a little slower for accuracy, whether in low power mode or not, and units to use
-        self.keysight.write(f"SENSe1:TEMPerature:NPLCycles {self.json_data['keysight970a_rtd_NPLcycles']},({rtd_ch_list})")
-        self.keysight.write(f"SENSe1:TEMPerature:TRANsducer:FRTD:POWer:LIMit:STATe {self.json_data['keysight970a_rtd_LowPower']},({rtd_ch_list})")
-        self.keysight.write(f"UNIT:TEMPerature {self.json_data['keysight970a_rtd_units']},({rtd_ch_list})")
+        self.keysight.write(f"SENSe1:TEMPerature:NPLCycles {self.json_data['keysight970a_rtd_NPLcycles']},({self.rtd_ch_list})")
+        self.keysight.write(f"SENSe1:TEMPerature:TRANsducer:FRTD:POWer:LIMit:STATe {self.json_data['keysight970a_rtd_LowPower']},({self.rtd_ch_list})")
+        self.keysight.write(f"UNIT:TEMPerature {self.json_data['keysight970a_rtd_units']},({self.rtd_ch_list})")
         self.keysight.write("FORMat:READing:CHANnel ON")
-        #self.keysight.write("FORMat:READing:UNIT ON")
-        #print(self.keysight.query("ROUTe:SCAN?"))
-        #self.keysight.write("ROUTe:SCAN (@)")
-        #self.keysight.write("ROUTe:CLOSe (@105,107)")
 
-    def measure_temp(self):
+        self.state = "rtd"
+
+    def initialize_resistance(self):
+        self.keysight.write(f"CONFigure:RESistance AUTO,DEF,({self.heater_ch_list})")
+        self.keysight.write(f"SENSe:RESistance:NPLCycles {self.json_data['keysight970a_heater_NPLcycles']},({self.heater_ch_list})")
+        self.keysight.write(f"SENSe:RESistance:OCOMpensated {self.json_data['keysight970a_heater_ocomp']},({self.heater_ch_list})")
+        self.keysight.write("FORMat:READing:CHANnel ON")
+
+        self.state = "resistance"
+
+    def initialize_fan(self):
+        self.keysight.write(f"CONFigure:VOLTage:DC AUTO,DEF,({self.fan_ch_list})")
+        self.keysight.write(f"SENSe:VOLTage:DC:NPLCycles {self.json_data['keysight970a_fan_NPLcycles']},({self.fan_ch_list})")
+        self.keysight.write(f"SENSe:VOLTage:DC:ZERO:AUTO {self.json_data['keysight970a_fan_autozero']},({self.fan_ch_list})")
+        self.keysight.write(f"SENSe:VOLTage:DC:IMPedance:AUTO {self.json_data['keysight970a_fan_autoimpedance']},({self.fan_ch_list})")
+        self.keysight.write("FORMat:READing:CHANnel ON")
+
+        self.state = "fan"
+
+    def heaters_on(self):
+        self.keysight.write("ROUTe:SCAN (@)")
+        self.keysight.write(f"ROUTe:CLOSe ({self.heater_ch_list_power})")
+
+        self.state = "heating"
+
+    #Sets the output channels for the HV relay control. Easier to split it into 2 blocks with separate functions
+    def set_relay(self, hv, term):
+        if (type(hv) != int or type(term) != int):
+            print(f"{self.prefix} --> Type for hv value is {type(hv)} and type for termination value is {type(term)}")
+            return 0
+        if (hv < 0 or hv > 255):
+            print(f"{self.prefix} --> HV value is {hv}, it needs to be between 0 and 255")
+            return 0
+        if (term < 0 or term > 255):
+            print(f"{self.prefix} --> HV value is {term}, it needs to be between 0 and 255")
+            return 0
+
+        self.keysight.write(f"SOURce:DIGital:DATA:BYTE {hv},(@{self.json_data['keysight970a_907A_slot']}01)")
+        self.keysight.write(f"SOURce:DIGital:DATA:BYTE {term},(@{self.json_data['keysight970a_907A_slot']}02)")
+
+    def measure_rtd(self):
+        if (self.state != "rtd"):
+            print(f"{self.prefix} --> Tried to measure temperature without being in the temperature state!")
+            return None
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
         #Get rid of /n at the end of the string
-        resp = self.keysight.query("READ?", delay = 1).strip()
+        resp = self.keysight.query("READ?", delay = int(self.json_data['keysight970a_rtd_delay'])).strip()
         #Split commas into lists
         sep = resp.split(",")
         #Make a dictionary with the channel as the key and the float reading as value
         results = {}
-        for i in range(0,7,2):
-            results[sep[i+1]] = float(sep[i])
+        for i in range(0,(self.num_rtds * 2)-1,2):
+            results[self.rtd_convert[f"{sep[i+1]}"]] = float(sep[i])
+
+        return results
+
+    def measure_resistance(self):
+        if (self.state != "resistance"):
+            print(f"{self.prefix} --> Tried to measure resistance without being in the resistance state!")
+            return None
+        #Response is something like
+        #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
+        #Get rid of /n at the end of the string
+        resp = self.keysight.query("READ?", delay = int(self.json_data['keysight970a_heater_delay'])).strip()
+        #Split commas into lists
+        sep = resp.split(",")
+        #Make a dictionary with the channel as the key and the float reading as value
+        results = {}
+        for i in range(0,(self.num_rtds * 2)-1,2):
+            results[self.heater_convert[f"{sep[i+1]}"]] = float(sep[i])
+
+        return results
+
+    def measure_fan(self):
+        if (self.state != "fan"):
+            print(f"{self.prefix} --> Tried to measure fan without being in the fan state!")
+            return None
+        #Response is something like
+        #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
+        #Get rid of /n at the end of the string
+        resp = self.keysight.query("READ?", delay = int(self.json_data['keysight970a_fan_delay'])).strip()
+        #Split commas into lists
+        sep = resp.split(",")
+        #Make a dictionary with the channel as the key and the float reading as value
+        results = {}
+        for i in range(0,(self.num_rtds * 2)-1,2):
+            results[self.fan_convert[f"{sep[i+1]}"]] = float(sep[i])
 
         return results

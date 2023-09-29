@@ -13,10 +13,22 @@ class LDOmeasure:
         self.rm = pyvisa.ResourceManager('@py')
 
         k = Keysight970A(self.rm, self.json_data)
-        k.initialize()
+        k.set_relay(24, 69)
+        k.initialize_rtd()
+        print(k.measure_resistance())
+        k.initialize_resistance()
+        print(k.measure_fan())
+        k.initialize_fan()
+        print(k.measure_rtd())
+        k.heaters_on()
 
-        r = RigolDP832A(self.rm, self.json_data)
-        r.initialize()
+        # r = RigolDP832A(self.rm, self.json_data)
+        # r.initialize()
+
+
+        # r.get_current("fan")
+        # print(r.get_voltage("fan"))
+        # print(r.check_overcurr_protection("fan"))
         #resp.measure_temp()
         #self.name = name
         #self.begin_measurement()
