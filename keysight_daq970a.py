@@ -121,7 +121,7 @@ class Keysight970A:
 
     def measure_rtd(self):
         if (self.state != "rtd"):
-            print(f"{self.prefix} --> Tried to measure temperature without being in the temperature state!")
+            print(f"{self.prefix} --> Tried to measure temperature without being in the temperature state! State is {self.state}!")
             return None
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
@@ -138,7 +138,7 @@ class Keysight970A:
 
     def measure_resistance(self):
         if (self.state != "resistance"):
-            print(f"{self.prefix} --> Tried to measure resistance without being in the resistance state!")
+            print(f"{self.prefix} --> Tried to measure resistance without being in the resistance state! State is {self.state}!")
             return None
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
@@ -155,7 +155,7 @@ class Keysight970A:
 
     def measure_fan(self):
         if (self.state != "fan"):
-            print(f"{self.prefix} --> Tried to measure fan without being in the fan state!")
+            print(f"{self.prefix} --> Tried to measure fan without being in the fan state! State is {self.state}!")
             return None
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
