@@ -49,6 +49,7 @@ class CAENR8033DM:
         #self.get_sys_info()
         self.get_board_info()
         self.get_channel_info()
+        self.get_channel_parameter_value([12,5], "VSet")
 
     def get_crate_info(self):
         c_num_of_slots = c_ushort()
@@ -167,29 +168,49 @@ class CAENR8033DM:
             self.ch_params[ch][param]["Exp"] = c_prop_val.value
 
     def get_channel_parameter_value(self, ch, param):
-        if param not in self.ch_params[ch]:
-            sys.exit(f"Tried to access parameter{param} which wasn't in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
-        if (('Type' not in self.ch_params[ch][param]) or ('Mode' not in self.ch_params[ch][param])):
-            sys.exit(f"Tried to access parameter{param} which didn't have Type and Mode set up in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
-        if (self.ch_params[ch][param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
-            sys.exit(f"Trying to read a parameter that is read only. Channel {ch} parameter list is {self.ch_params[ch]}")
 
-        if (self.ch_params[ch][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
-            c_param_val = c_float()
+        if (isinstance(ch, list)):
+            print("getting multiple channels")
+            size = len(ch)
+            print(size)
+            c_param_val = (c_float * size)()
+            c_param_list = (c_ushort * size)()
+            print(type(c_param_val))
+            print(type(c_param_list))
+            for num,i in enumerate(ch):
+                c_param_list[num] = i
+            print(list(c_param_val))
+            print(list(c_param_list))
         else:
-            c_param_val = c_long()
+            if param not in self.ch_params[ch]:
+                sys.exit(f"Tried to access parameter{param} which wasn't in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+            if (('Type' not in self.ch_params[ch][param]) or ('Mode' not in self.ch_params[ch][param])):
+                sys.exit(f"Tried to access parameter{param} which didn't have Type and Mode set up in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+            if (self.ch_params[ch][param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
+                sys.exit(f"Trying to read a parameter that is read only. Channel {ch} parameter list is {self.ch_params[ch]}")
 
+            if (self.ch_params[ch][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+                c_param_val = c_float()
+            else:
+                c_param_val = c_long()
+            size = 1
+            c_param_list = c_ushort(ch)
 
 
         return_code = self.libcaenhvwrapper.CAENHV_GetChParam(self.caen,
                                                             c_ushort(self.slot),
                                                             param.encode('utf-8'),
-                                                            c_ushort(1),                #Number of channels you want to read
-                                                            byref(c_ushort(ch)),        #Which channels you want to read
+                                                            c_ushort(size),                #Number of channels you want to read
+                                                            byref(c_param_list),        #Which channels you want to read
                                                             byref(c_param_val))
 
         if (self.check_return(return_code, f"Retrieving value for channel {ch}, parameter {param} failed") == 0):
-            self.ch_params[ch][param]["Value"] = c_param_val.value
+            if (isinstance(ch, list)):
+                print(c_param_val)
+                print(c_param_val[0])
+                print(c_param_val[1])
+            else:
+                self.ch_params[ch][param]["Value"] = c_param_val.value
         else:
             self.ch_params[ch][param]["Value"] = "Error"
 
