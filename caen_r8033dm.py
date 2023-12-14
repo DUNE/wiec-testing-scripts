@@ -10,11 +10,17 @@ CAENHV_GetSysPropList returns 0 system properties and a null pointer
 """
 import sys
 import os
-from ctypes import c_int, c_float, c_void_p, c_char_p, c_char, c_ushort, pointer, cdll, cast, POINTER, byref, sizeof
+from enum import IntEnum
+from ctypes import c_int, c_float, c_void_p, c_char_p, c_char, c_ushort, pointer, cdll, cast, POINTER, byref, sizeof, c_ulong, c_uint32
 
 class CAENR8033DM:
     def __init__(self, json_data):
         self.prefix = "CAEN R8033DM"
+        self.model_id = 13              #13 is the value for teh 803X series
+        self.comm_protocol = 0          #0 is the value for TCP/IP
+        self.slot = 0                   #R8033DM only has one logical slot
+        self.board_param_size = 10      #Empirically found that parameter names have max size of 10 characters, needed for pointer casting
+        self.board_params = {}
         self.json_data = json_data
 
         try:
@@ -28,8 +34,8 @@ class CAENR8033DM:
 
         #Integer handler for the connection
         self.caen = c_int()
-        return_code = self.libcaenhvwrapper.CAENHV_InitSystem(c_int(13),                                        #13 is the value for
-                                                              c_int(0),                                         #0 is the value for TCP/IP
+        return_code = self.libcaenhvwrapper.CAENHV_InitSystem(c_int(self.model_id),
+                                                              c_int(self.comm_protocol),
                                                               self.json_data['caenR8033DM'].encode('utf-8'),    #IP address for TCP/IP
                                                               "".encode('utf-8'),                               #Username, unused
                                                               "".encode('utf-8'),                               #Password, unused
@@ -37,7 +43,7 @@ class CAENR8033DM:
 
         self.check_return(return_code, "Initialized successfully")
 
-        #self.get_info()
+        self.get_info()
         self.get_board_info()
 
     def get_info(self):
@@ -56,43 +62,59 @@ class CAENR8033DM:
                                                             byref(c_serial_num_list),
                                                             byref(c_firmware_release_min_list),
                                                             byref(c_firmware_releae_max_list))
-        print(type(c_model_list))
-        print(c_model_list)
-        print(type(c_model_list.value))
-        print(c_model_list.value)
+        self.check_return(return_code, "Failed to get crate map")
         print(f"{self.prefix} --> Connected to Caen {c_model_list.value.decode('utf-8')}, serial number {c_serial_num_list.contents.value} with {c_num_of_slots.value} slots and {c_num_of_channels.contents.value} channels detected")
-        self.check_return(return_code)
 
-        c_num_sys_props = c_ushort()
-        c_param_list = c_char_p()
+
+        c_param_list = c_float()
         #self.libcaenhvwrapper.CAENHV_GetBdParamInfo.argtypes = [c_int, POINTER(c_ushort), POINTER(c_char_p)]
         return_code = self.libcaenhvwrapper.CAENHV_GetBdParam(self.caen,
-                                                            c_ushort(0),
-                                                            byref(c_ushort(0)),
-                                                            "BdIlk".encode('utf-8'),
+                                                            c_ushort(self.slot),
+                                                            byref(c_ushort(self.slot)),
+                                                            "BDHVmax".encode('utf-8'),
                                                             byref(c_param_list))
 
         self.check_return(return_code, "failed")
         print(c_param_list)
         print(c_param_list.value)
 
-    def get_board_info(self):
+    def get_board_property_info(self, prop):
+        c_param_list = c_ulong()
+        #self.libcaenhvwrapper.CAENHV_GetBdParamInfo.argtypes = [c_int, POINTER(c_ushort), POINTER(c_char_p)]
+        return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                            c_ushort(self.slot),
+                                                            prop.encode('utf-8'),
+                                                            "Type".encode('utf-8'),
+                                                            byref(c_param_list))
 
-        c_slot_num = c_ushort(0)
+        self.check_return(return_code, f"Failed to get board parameter {prop} type")
+        self.board_params[prop] = [self.PropertyType(c_param_list.value).name]
+
+        return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                            c_ushort(self.slot),
+                                                            prop.encode('utf-8'),
+                                                            "Mode".encode('utf-8'),
+                                                            byref(c_param_list))
+
+        self.check_return(return_code, f"Failed to get board parameter {prop} mode")
+        self.board_params[prop].append(self.PropertyMode(c_param_list.value).name)
+
+    def get_board_info(self):
+        c_slot_num = c_ushort(self.slot)
         c_bd_param_list = c_char_p()
         #Function takes in a **char type as the parameter list. It will write back an array of char arrays
         return_code = self.libcaenhvwrapper.CAENHV_GetBdParamInfo(self.caen,
                                                             c_slot_num,
                                                             byref(c_bd_param_list))
 
-        self.check_return(return_code, "bd params failed")
+        self.check_return(return_code, "Failed to get board parameters")
 
         #Cast as a pointer to 10 char arrays. The type is
         #<class 'caen_r8033dm.LP_c_char_Array_10'>
         #You need to just "know" that each parameter fills 10 chars, either with terminating null characters or gibberish
         #I confirmed by reading out the full memory block, and also through the example C script
 
-        par_array = cast(c_bd_param_list, (POINTER(c_char * 10)))
+        par_array = cast(c_bd_param_list, (POINTER(c_char * self.board_param_size)))
 
         #If you run par_array.contents, the type is <class 'caen_r8033dm.c_char_Array_10'> and the size is 10
         #But printing it just gives <caen_r8033dm.c_char_Array_10 object at 0x7ff81f8cfe30>
@@ -117,10 +139,23 @@ class CAENR8033DM:
                 i += 1
             else:
                 break
-        print(board_params)
+        for i in board_params:
+            self.get_board_property_info(i)
+
+        print(f"Board level properties are {self.board_params}")
 
     def check_return(self, ret, message = None):
         if (ret != 0):
             if (message):
                 print(f"{self.prefix} --> {message}")
             sys.exit(f"{self.prefix} --> Attempt to communicate with CAEN R8033DM resulted in error code {hex(ret)}")
+
+    class PropertyType(IntEnum):
+        PARAM_TYPE_FLOAT = 0
+        PARAM_TYPE_ONOFF = 1
+        PARAM_TYPE_BDSTATUS = 3
+
+    class PropertyMode(IntEnum):
+        PARAM_MODE_RDONLY = 0
+        PARAM_MODE_WRONLY = 1
+        PARAM_MODE_RDWR = 2
