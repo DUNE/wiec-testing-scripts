@@ -10,8 +10,9 @@ CAENHV_GetSysPropList returns 0 system properties and a null pointer
 """
 import sys
 import os
+import pprint
 from enum import IntEnum
-from ctypes import c_int, c_float, c_void_p, c_char_p, c_char, c_ushort, pointer, cdll, cast, POINTER, byref, sizeof, c_ulong, c_uint32
+from ctypes import c_int, c_float, c_void_p, c_char_p, c_char, c_ushort, pointer, cdll, cast, POINTER, byref, sizeof, c_ulong, c_uint32, c_long, c_short
 
 class CAENR8033DM:
     def __init__(self, json_data):
@@ -21,6 +22,7 @@ class CAENR8033DM:
         self.slot = 0                   #R8033DM only has one logical slot
         self.board_param_size = 10      #Empirically found that parameter names have max size of 10 characters, needed for pointer casting
         self.board_params = {}
+        self.ch_params = {}
         self.json_data = json_data
 
         try:
@@ -41,12 +43,14 @@ class CAENR8033DM:
                                                               "".encode('utf-8'),                               #Password, unused
                                                               pointer(self.caen))                               #Pointer to returned handle
 
-        self.check_return(return_code, "Initialized successfully")
+        self.check_return(return_code, "Initialization Failed")
 
-        self.get_info()
+        self.get_crate_info()
+        #self.get_sys_info()
         self.get_board_info()
+        self.get_channel_info()
 
-    def get_info(self):
+    def get_crate_info(self):
         c_num_of_slots = c_ushort()
         c_num_of_channels = POINTER(c_ushort)()
         c_description_list = c_char_p()
@@ -64,40 +68,144 @@ class CAENR8033DM:
                                                             byref(c_firmware_releae_max_list))
         self.check_return(return_code, "Failed to get crate map")
         print(f"{self.prefix} --> Connected to Caen {c_model_list.value.decode('utf-8')}, serial number {c_serial_num_list.contents.value} with {c_num_of_slots.value} slots and {c_num_of_channels.contents.value} channels detected")
+        self.channel_list = c_num_of_channels.contents
 
-
-        c_param_list = c_float()
-        #self.libcaenhvwrapper.CAENHV_GetBdParamInfo.argtypes = [c_int, POINTER(c_ushort), POINTER(c_char_p)]
-        return_code = self.libcaenhvwrapper.CAENHV_GetBdParam(self.caen,
+    def get_channel_info(self):
+        c_par_num = c_ushort()
+        c_par_list = c_char_p()
+        return_code = self.libcaenhvwrapper.CAENHV_GetChParamInfo(self.caen,
                                                             c_ushort(self.slot),
-                                                            byref(c_ushort(self.slot)),
-                                                            "BDHVmax".encode('utf-8'),
-                                                            byref(c_param_list))
+                                                            c_ushort(0),            #Default to channel 0 since they're all the same
+                                                            byref(c_par_list),
+                                                            byref(c_par_num))
 
-        self.check_return(return_code, "failed")
-        print(c_param_list)
-        print(c_param_list.value)
+        self.check_return(return_code, f"Failed to get channel info")
 
-    def get_board_property_info(self, prop):
-        c_param_list = c_ulong()
-        #self.libcaenhvwrapper.CAENHV_GetBdParamInfo.argtypes = [c_int, POINTER(c_ushort), POINTER(c_char_p)]
-        return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+        #See comments in board info function for what happens here
+        par_array = cast(c_par_list, (POINTER(c_char * self.board_param_size)))
+        i = 0
+        ch_params = []
+        while (True):
+            result = par_array[i].value.decode('utf-8')
+            if (result.isalnum()):
+                ch_params.append(result)
+                i += 1
+            else:
+                break
+        for ch in range(16):
+            for i in ch_params:
+                self.get_channel_property_info(ch, i)
+                self.get_channel_parameter_value(ch, i)
+        print("Channel properties are:")
+        pprint.pprint(self.ch_params, width = 1)
+
+    def get_channel_property_info(self, ch, param):
+        c_prop_val = c_ulong()
+        return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
                                                             c_ushort(self.slot),
-                                                            prop.encode('utf-8'),
+                                                            c_ushort(ch),
+                                                            param.encode('utf-8'),
                                                             "Type".encode('utf-8'),
-                                                            byref(c_param_list))
+                                                            byref(c_prop_val))
 
-        self.check_return(return_code, f"Failed to get board parameter {prop} type")
-        self.board_params[prop] = [self.PropertyType(c_param_list.value).name]
+        self.check_return(return_code, f"Failed to get channel parameter {param} type")
+        if (ch not in self.ch_params):
+            self.ch_params[ch] = {param: {"Type" : self.PropertyType(c_prop_val.value).name}}
+        else:
+            self.ch_params[ch].update({param: {"Type" : self.PropertyType(c_prop_val.value).name}})
+        #self.ch_params[ch][param] = {"Type" : self.PropertyType(c_prop_val.value).name}
+        #self.ch_params[ch] = temp
 
-        return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+        return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
                                                             c_ushort(self.slot),
-                                                            prop.encode('utf-8'),
+                                                            c_ushort(ch),
+                                                            param.encode('utf-8'),
                                                             "Mode".encode('utf-8'),
-                                                            byref(c_param_list))
+                                                            byref(c_prop_val))
 
-        self.check_return(return_code, f"Failed to get board parameter {prop} mode")
-        self.board_params[prop].append(self.PropertyMode(c_param_list.value).name)
+        self.check_return(return_code, f"Failed to get channel parameter {param} mode")
+        self.ch_params[ch][param]["Mode"] = self.PropertyMode(c_prop_val.value).name
+
+        if (self.ch_params[ch][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+            c_prop_val = c_float()
+            return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                c_ushort(ch),
+                                                                param.encode('utf-8'),
+                                                                "Minval".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get channel parameter {param} Minval")
+            self.ch_params[ch][param]["Minval"] = c_prop_val.value
+
+            return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                c_ushort(ch),
+                                                                param.encode('utf-8'),
+                                                                "Maxval".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get channel parameter {param} Maxval")
+            self.ch_params[ch][param]["Maxval"] = c_prop_val.value
+
+            c_prop_val = c_ushort()
+            return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                c_ushort(ch),
+                                                                param.encode('utf-8'),
+                                                                "Unit".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get channel parameter {param} Unit")
+            self.ch_params[ch][param]["Unit"] = c_prop_val.value
+
+            c_prop_val = c_short()
+            return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                c_ushort(ch),
+                                                                param.encode('utf-8'),
+                                                                "Exp".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get channel parameter {param} Exp")
+            self.ch_params[ch][param]["Exp"] = c_prop_val.value
+
+    def get_channel_parameter_value(self, ch, param):
+        if param not in self.ch_params[ch]:
+            sys.exit(f"Tried to access parameter{param} which wasn't in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+        if (('Type' not in self.ch_params[ch][param]) or ('Mode' not in self.ch_params[ch][param])):
+            sys.exit(f"Tried to access parameter{param} which didn't have Type and Mode set up in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+        if (self.ch_params[ch][param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
+            sys.exit(f"Trying to read a parameter that is read only. Channel {ch} parameter list is {self.ch_params[ch]}")
+
+        if (self.ch_params[ch][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+            c_param_val = c_float()
+        else:
+            c_param_val = c_long()
+
+
+
+        return_code = self.libcaenhvwrapper.CAENHV_GetChParam(self.caen,
+                                                            c_ushort(self.slot),
+                                                            param.encode('utf-8'),
+                                                            c_ushort(1),                #Number of channels you want to read
+                                                            byref(c_ushort(ch)),        #Which channels you want to read
+                                                            byref(c_param_val))
+
+        if (self.check_return(return_code, f"Retrieving value for channel {ch}, parameter {param} failed") == 0):
+            self.ch_params[ch][param]["Value"] = c_param_val.value
+        else:
+            self.ch_params[ch][param]["Value"] = "Error"
+
+    def get_sys_info(self):
+        print("system info")
+        c_prop_num = c_ushort()
+        c_prop_list = c_char_p()
+        return_code = self.libcaenhvwrapper.CAENHV_GetSysPropList(self.caen,
+                                                            byref(c_prop_num),
+                                                            byref(c_prop_list))
+
+        self.check_return(return_code, f"Failed to get system info")
+        print(c_prop_num.value)
+        par_array = cast(c_prop_list, (POINTER(c_char * 300)))
+        for i in range(300):
+            print(par_array.contents[i])
 
     def get_board_info(self):
         c_slot_num = c_ushort(self.slot)
@@ -139,20 +247,124 @@ class CAENR8033DM:
                 i += 1
             else:
                 break
+
         for i in board_params:
             self.get_board_property_info(i)
+            self.get_board_parameter_value(i)
 
-        print(f"Board level properties are {self.board_params}")
+        print("Board level properties are:")
+        pprint.pprint(self.board_params, width = 1)
+
+    def get_board_property_info(self, param):
+        c_prop_val = c_ulong()
+        return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                            c_ushort(self.slot),
+                                                            param.encode('utf-8'),
+                                                            "Type".encode('utf-8'),
+                                                            byref(c_prop_val))
+
+        self.check_return(return_code, f"Failed to get board parameter {param} type")
+        self.board_params[param] = {"Type" : self.PropertyType(c_prop_val.value).name}
+
+        return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                            c_ushort(self.slot),
+                                                            param.encode('utf-8'),
+                                                            "Mode".encode('utf-8'),
+                                                            byref(c_prop_val))
+
+        self.check_return(return_code, f"Failed to get board parameter {param} mode")
+        self.board_params[param]["Mode"] = self.PropertyMode(c_prop_val.value).name
+
+        if (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+            c_prop_val = c_float()
+            return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                param.encode('utf-8'),
+                                                                "Minval".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get board parameter {param} Minval")
+            self.board_params[param]["Minval"] = c_prop_val.value
+
+            return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                param.encode('utf-8'),
+                                                                "Maxval".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get board parameter {param} Maxval")
+            self.board_params[param]["Maxval"] = c_prop_val.value
+
+            c_prop_val = c_ushort()
+            return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                param.encode('utf-8'),
+                                                                "Unit".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get board parameter {param} Unit")
+            self.board_params[param]["Unit"] = c_prop_val.value
+
+            c_prop_val = c_short()
+            return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                param.encode('utf-8'),
+                                                                "Exp".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get board parameter {param} Exp")
+            self.board_params[param]["Exp"] = c_prop_val.value
+
+        # elif (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_ONOFF.name):
+        #     print("onoff")
+        #     c_prop_val = c_char_p()
+        #     return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+        #                                                         c_ushort(self.slot),
+        #                                                         param.encode('utf-8'),
+        #                                                         "Onstate".encode('utf-8'),
+        #                                                         byref(c_prop_val))
+        #     self.check_return(return_code, f"Failed to get board parameter {param} Onstate")
+        #     self.board_params[param]["Onstate"] = c_prop_val.value
+        #     print("onoff")
+        #     return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+        #                                                         c_ushort(self.slot),
+        #                                                         param.encode('utf-8'),
+        #                                                         "Offstate".encode('utf-8'),
+        #                                                         byref(c_prop_val))
+        #     self.check_return(return_code, f"Failed to get board parameter {param} Offstate")
+        #     self.board_params[param]["Offstate"] = c_prop_val.value
+
+    def get_board_parameter_value(self, param):
+        if param not in self.board_params:
+            sys.exit(f"Tried to access parameter{param} which wasn't in the board parameter list. Board parameter list is {self.board_params}")
+        if (('Type' not in self.board_params[param]) or ('Mode' not in self.board_params[param])):
+            sys.exit(f"Tried to access parameter{param} which didn't have Type and Mode set up in the board parameter list. Board parameter list is {self.board_params}")
+        if (self.board_params[param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
+            sys.exit(f"Trying to read a parameter that is read only. Board parameter list is {self.board_params}")
+
+        if (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+            c_param_val = c_float()
+        else:
+            c_param_val = c_long()
+
+        return_code = self.libcaenhvwrapper.CAENHV_GetBdParam(self.caen,
+                                                            c_ushort(self.slot),
+                                                            byref(c_ushort(self.slot)),
+                                                            param.encode('utf-8'),
+                                                            byref(c_param_val))
+
+        self.check_return(return_code, f"Retrieving value for parameter {param} failed")
+        self.board_params[param]["Value"] = c_param_val.value
 
     def check_return(self, ret, message = None):
         if (ret != 0):
             if (message):
                 print(f"{self.prefix} --> {message}")
-            sys.exit(f"{self.prefix} --> Attempt to communicate with CAEN R8033DM resulted in error code {hex(ret)}")
+                print(f"{self.prefix} --> Attempt to communicate with CAEN R8033DM resulted in error code {hex(ret)}")
+            return -1
+        else:
+            return 0
 
     class PropertyType(IntEnum):
         PARAM_TYPE_FLOAT = 0
         PARAM_TYPE_ONOFF = 1
+        PARAM_TYPE_CHSTATUS = 2
         PARAM_TYPE_BDSTATUS = 3
 
     class PropertyMode(IntEnum):
