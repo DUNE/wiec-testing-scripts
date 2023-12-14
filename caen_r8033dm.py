@@ -78,60 +78,46 @@ class CAENR8033DM:
 
     def get_board_info(self):
 
-        c_num_sys_props = c_ushort(0)
+        c_slot_num = c_ushort(0)
         c_bd_param_list = c_char_p()
-        print(type(c_bd_param_list))
-        #self.libcaenhvwrapper.CAENHV_GetBdParamInfo.argtypes = [c_int, POINTER(c_ushort), POINTER(c_char_p)]
+        #Function takes in a **char type as the parameter list. It will write back an array of char arrays
         return_code = self.libcaenhvwrapper.CAENHV_GetBdParamInfo(self.caen,
-                                                            c_num_sys_props,
+                                                            c_slot_num,
                                                             byref(c_bd_param_list))
 
-        #print(c_bd_param_list.value)
         self.check_return(return_code, "bd params failed")
 
+        #Cast as a pointer to 10 char arrays. The type is
+        #<class 'caen_r8033dm.LP_c_char_Array_10'>
+        #You need to just "know" that each parameter fills 10 chars, either with terminating null characters or gibberish
+        #I confirmed by reading out the full memory block, and also through the example C script
 
-        print(type(c_bd_param_list))
-        print(sizeof(c_bd_param_list))
-        print(type(c_bd_param_list.value))
-        print(c_bd_param_list.value)
-        x = cast(c_bd_param_list, (POINTER(c_char * 300)))
-        print(type(x))
-        print("here")
-        #print(type(c_bd_param_list[0]))
-        #print(type(c_bd_param_list[0].contents))
-        #print(c_bd_param_list.raw)
-        print(type(x.contents))
-        print(sizeof(x.contents))
-        print((x.contents))
-        for i in range(300):
-            print(x.contents[i])
-        print("ok")
-        y = c_char_p(0x7f93253e8440)
+        par_array = cast(c_bd_param_list, (POINTER(c_char * 10)))
 
-        print(y)
-        print(type(y))
-        print(y.value)
+        #If you run par_array.contents, the type is <class 'caen_r8033dm.c_char_Array_10'> and the size is 10
+        #But printing it just gives <caen_r8033dm.c_char_Array_10 object at 0x7ff81f8cfe30>
+        #And you need to do par_array.contents[0], par_array.contents[1], par_array.contents[2], etc... to get the
+        #parameter letter by letter - b'B', b'd', b'I', b'l', b'k', etc...
+        #And par_array.contents.value will only give you the first value, as if there was only one char array the pointer pointed to
+        #By indexing it as par_array[0] and par_array[1], then par_array[0].contents doesn't exist
+        #But type(par_array[0]) is <class 'caen_r8033dm.c_char_Array_10'> and type(par_array[0].value) is <class 'bytes'>
+        #So par_array[0].value is b'BdIlk', par_array[1] is b'BdIlkm', par_array[2] is b'BdCtr', etc...
+        #These can be decoded through utf-8 or left as is to be passed back to other functions
 
-        print(type(x.contents.contents))
-        print(sizeof(x.contents.contents))
-        print((x.contents.contents))
+        i = 0
+        board_params = []
 
-        print(type(x.contents.value))
-        print(sizeof(x.contents.value))
-        print((x.contents.value))
-        print(type(x.contents[0]))
-        print(sizeof(c_bd_param_list.contents))
-        print(type(c_bd_param_list.contents.value))
-        print(sizeof(c_bd_param_list.contents.value))
-        print(c_bd_param_list.contents.decode('utf-8'))
-        print("works")
-        print(c_bd_param_list.value.decode('utf-8'))
-
-        print(c_bd_param_list.value)
-        #print(type(c_bd_param_list[0]))
-        print(type(c_bd_param_list.contents.value))
-        print(c_bd_param_list.contents.value)
-        print(type(c_bd_param_list.contents.value))
+        #It's hard to know how many parameters there will be. Even in Caen's example code, they just loop until the pointer to char array is not valid
+        #In this Ctypes way, we can go until the resulting 10 char array is either empty '' which happens. Or it's not alphanumeric characters
+        #So it's gibberish like \a0\n4 and stuff like that
+        while (True):
+            result = par_array[i].value.decode('utf-8')
+            if (result.isalnum()):
+                board_params.append(result)
+                i += 1
+            else:
+                break
+        print(board_params)
 
     def check_return(self, ret, message = None):
         if (ret != 0):
