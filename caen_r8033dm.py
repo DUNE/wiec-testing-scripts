@@ -12,7 +12,7 @@ import sys
 import os
 import pprint
 from enum import IntEnum
-from ctypes import c_int, c_float, c_void_p, c_char_p, c_char, c_ushort, pointer, cdll, cast, POINTER, byref, sizeof, c_ulong, c_uint32, c_long, c_short, create_string_buffer
+from ctypes import c_int, c_float, c_void_p, c_char_p, c_char, c_ushort, pointer, cdll, cast, POINTER, byref, sizeof, c_ulong, c_uint32, c_long, c_short, create_string_buffer, c_uint8
 
 class CAENR8033DM:
     def __init__(self, json_data):
@@ -23,6 +23,7 @@ class CAENR8033DM:
         self.slot = 0                   #R8033DM only has one logical slot
         self.board_param_size = 10      #Empirically found that parameter names have max size of 10 characters, needed for pointer casting
         self.ch_name_size = 12          #Empirically found that channel names have a max size of 12 characters, needed for pointer casting
+        self.state_size = 30            #Empiracally found that state on/off names have a max size of 30 characters, needed for pointer casting
         self.num_of_channels = 16
         self.board_params = {}
         self.ch_params = {}
@@ -57,11 +58,21 @@ class CAENR8033DM:
         #self.get_channel_name(5)
         #self.get_channel_name([12,5, 2, 9, 14])
 
+        # self.set_board_parameter("BdIlkm", 1)
+        # self.get_board_parameter_value("BdIlkm")
+
+        self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Pw", [0])
+        self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Pw")
+        self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Status")
+        print("Channel properties are:")
+        pprint.pprint(self.ch_params, width = 1)
+
         print("Board level properties are:")
         pprint.pprint(self.board_params, width = 1)
 
-        print("Channel properties are:")
-        pprint.pprint(self.ch_params, width = 1)
+    def __del__(self):
+        return_code = self.libcaenhvwrapper.CAENHV_DeinitSystem(self.caen)
+        self.check_return(return_code, "Disconnection Failed", "Disconnected")
 
     #This function gets the information about the crate as a whole, number of slots, channels, etc...
     #In our case, we only have 1 slot. For some reason the description list returns nothing and I can' parse the firmware releases, but those don't matter
@@ -206,35 +217,32 @@ class CAENR8033DM:
             self.check_return(return_code, f"Failed to get board parameter {param} Exp")
             self.board_params[param]["Exp"] = c_prop_val.value
 
-        #Binary values are supposed to have these properties, but it segfaults
-        # elif (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_ONOFF.name):
-        #     print("onoff")
-        #     c_prop_val = c_char_p()
-        #     return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
-        #                                                         c_ushort(self.slot),
-        #                                                         param.encode('utf-8'),
-        #                                                         "Onstate".encode('utf-8'),
-        #                                                         byref(c_prop_val))
-        #     self.check_return(return_code, f"Failed to get board parameter {param} Onstate")
-        #     self.board_params[param]["Onstate"] = c_prop_val.value
-        #     print("onoff")
-        #     return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
-        #                                                         c_ushort(self.slot),
-        #                                                         param.encode('utf-8'),
-        #                                                         "Offstate".encode('utf-8'),
-        #                                                         byref(c_prop_val))
-        #     self.check_return(return_code, f"Failed to get board parameter {param} Offstate")
-        #     self.board_params[param]["Offstate"] = c_prop_val.value
+        elif (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_ONOFF.name):
+            c_prop_val = (c_char * self.state_size)()
+            return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                param.encode('utf-8'),
+                                                                "Onstate".encode('utf-8'),
+                                                                c_prop_val)
+            self.check_return(return_code, f"Failed to get board parameter {param} Onstate")
+            self.board_params[param]["Onstate"] = c_prop_val.value.decode('utf-8')
+            return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                param.encode('utf-8'),
+                                                                "Offstate".encode('utf-8'),
+                                                                c_prop_val)
+            self.check_return(return_code, f"Failed to get board parameter {param} Offstate")
+            self.board_params[param]["Offstate"] = c_prop_val.value.decode('utf-8')
 
     #With the parameter's properties known, we can poll to see what the parameter value is
     #This does that and adds it to the dictionary
     def get_board_parameter_value(self, param):
         if param not in self.board_params:
-            sys.exit(f"Tried to access parameter{param} which wasn't in the board parameter list. Board parameter list is {self.board_params}")
+            sys.exit(f"{self.prefix} --> Tried to access parameter{param} which wasn't in the board parameter list. Board parameter list is {self.board_params}")
         if (('Type' not in self.board_params[param]) or ('Mode' not in self.board_params[param])):
-            sys.exit(f"Tried to access parameter{param} which didn't have Type and Mode set up in the board parameter list. Board parameter list is {self.board_params}")
+            sys.exit(f"{self.prefix} --> Tried to access parameter{param} which didn't have Type and Mode set up in the board parameter list. Board parameter list is {self.board_params}")
         if (self.board_params[param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
-            sys.exit(f"Trying to read a parameter that is read only. Board parameter list is {self.board_params}")
+            sys.exit(f"{self.prefix} --> Trying to read a parameter that is read only. Board parameter list is {self.board_params}")
 
         if (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
             c_param_val = c_float()
@@ -310,7 +318,6 @@ class CAENR8033DM:
 
         self.check_return(return_code, f"Failed to get channel parameter {param} mode")
         self.ch_params[ch][param]["Mode"] = self.PropertyMode(c_prop_val.value).name
-
         #Float parameters will always have these properties
         if (self.ch_params[ch][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
             c_prop_val = c_float()
@@ -352,6 +359,32 @@ class CAENR8033DM:
             self.check_return(return_code, f"Failed to get channel parameter {param} Exp")
             self.ch_params[ch][param]["Exp"] = c_prop_val.value
 
+            c_prop_val = c_ushort()
+            return_code = self.libcaenhvwrapper.CAENHV_GetChParamProp(self.caen,
+                                                                c_ushort(self.slot),
+                                                                c_ushort(ch),
+                                                                param.encode('utf-8'),
+                                                                "Decimal".encode('utf-8'),
+                                                                byref(c_prop_val))
+            self.check_return(return_code, f"Failed to get channel parameter {param} Decimal")
+            self.ch_params[ch][param]["Decimal"] = c_prop_val.value
+        # elif (self.ch_params[ch][param]['Type'] == self.PropertyType.PARAM_TYPE_ONOFF.name):
+        #     c_prop_val = (c_char * self.state_size)()
+        #     return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+        #                                                         c_ushort(self.slot),
+        #                                                         param.encode('utf-8'),
+        #                                                         "Onstate".encode('utf-8'),
+        #                                                         c_prop_val)
+        #     self.check_return(return_code, f"Failed to get board parameter {param} Onstate")
+        #     self.ch_params[ch][param]["Onstate"] = c_prop_val.value.decode('utf-8')
+        #     return_code = self.libcaenhvwrapper.CAENHV_GetBdParamProp(self.caen,
+        #                                                         c_ushort(self.slot),
+        #                                                         param.encode('utf-8'),
+        #                                                         "Offstate".encode('utf-8'),
+        #                                                         c_prop_val)
+        #     self.check_return(return_code, f"Failed to get board parameter {param} Offstate")
+        #     self.ch_params[ch][param]["Offstate"] = c_prop_val.value.decode('utf-8')
+
     #With the parameter's properties known, we can poll to see what the parameter value is
     #This does that and adds it to the dictionary
     #This can be called with a single channel or a list of channels because the C function allows both
@@ -362,11 +395,11 @@ class CAENR8033DM:
         size = len(chns)
         for ch in chns:
             if param not in self.ch_params[ch]:
-                sys.exit(f"Tried to access parameter{param} which wasn't in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+                sys.exit(f"{self.prefix} --> Tried to access parameter{param} which wasn't in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
             if (('Type' not in self.ch_params[ch][param]) or ('Mode' not in self.ch_params[ch][param])):
-                sys.exit(f"Tried to access parameter{param} which didn't have Type and Mode set up in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+                sys.exit(f"{self.prefix} --> Tried to access parameter{param} which didn't have Type and Mode set up in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
             if (self.ch_params[ch][param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
-                sys.exit(f"Trying to read a parameter that is read only. Channel {ch} parameter list is {self.ch_params[ch]}")
+                sys.exit(f"{self.prefix} --> Trying to read a parameter that is read only. Channel {ch} parameter list is {self.ch_params[ch]}")
         if (self.ch_params[chns[0]][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
             c_param_val = (c_float * size)()
         else:
@@ -389,6 +422,7 @@ class CAENR8033DM:
 
     #This is a curious function. You pass in a channel like 5 and it returns "CH05"
     #And you can ask for multiple, say channels 12, 4, and 8. Sure enough, you get "Ch12, Ch04, Ch08"
+    #There's a corresponding function that lets you set the name to change it. Whatever that does.
     #Not sure what use it is, but I figured I'd implement it. It runs on the same logic as getting the values of multiple channels parameters
     #However, whenever I use this function with multiple channels, it works. But at the end of the Python program there's a segfault
     def get_channel_name(self, chns):
@@ -417,10 +451,73 @@ class CAENR8033DM:
 
         return return_array
 
+    def set_board_parameter(self, param, val):
+        if param not in self.board_params:
+            sys.exit(f"{self.prefix} --> Tried to write parameter{param} which wasn't in the board parameter list. Board parameter list is {self.board_params}")
+        if (('Type' not in self.board_params[param]) or ('Mode' not in self.board_params[param])):
+            sys.exit(f"{self.prefix} --> Tried to write parameter{param} which didn't have Type and Mode set up in the board parameter list. Board parameter list is {self.board_params}")
+        if (self.board_params[param]['Mode'] == self.PropertyMode.PARAM_MODE_RDONLY):
+            sys.exit(f"{self.prefix} --> Trying to write a parameter that is read only. Board parameter list is {self.board_params}")
+
+        if (self.board_params[param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+            c_param_val = c_float(val)
+        else:
+            c_param_val = c_long(val)
+        print(c_param_val)
+
+        return_code = self.libcaenhvwrapper.CAENHV_SetBdParam(self.caen,
+                                                            c_ushort(self.slot),
+                                                            byref(c_ushort(self.slot)),
+                                                            param.encode('utf-8'),
+                                                            byref(c_param_val))
+
+        self.check_return(return_code, f"Failed to write board param {param}")
+
+    #Sets the parameter and value for given channels
+    #The channel logic works the same as the get channel parameter value. But the function also allows each channel in the list to have a different value
+    #If only one value is given, then I apply that to all the channels. If not, the arrays have to be the same size so each value maps to a channel for writing
+    def set_ch_parameter(self, chns, param, vals):
+        if (isinstance(chns, int)):
+            chns = [chns]
+        if (not isinstance(vals, list)):
+            vals = [vals]
+        if ((len(chns) != len(vals)) and (len(vals) != 1)):
+            sys.exit(f"{self.prefix} --> Incorrect use of set_ch_parameter! The number of channels and values you supply must be the same! Or only supply one value!\n\
+                     You supplied {chns} channels and {vals} values!")
+        size = len(chns)
+        for ch in chns:
+            if param not in self.ch_params[ch]:
+                sys.exit(f"{self.prefix} --> Tried to access parameter{param} which wasn't in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+            if (('Type' not in self.ch_params[ch][param]) or ('Mode' not in self.ch_params[ch][param])):
+                sys.exit(f"{self.prefix} --> Tried to access parameter{param} which didn't have Type and Mode set up in the channel parameter list. Channel {ch} parameter list is {self.ch_params[ch]}")
+            if (self.ch_params[ch][param]['Mode'] == self.PropertyMode.PARAM_MODE_WRONLY):
+                sys.exit(f"{self.prefix} --> Trying to read a parameter that is read only. Channel {ch} parameter list is {self.ch_params[ch]}")
+        if (self.ch_params[chns[0]][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
+            c_param_val = (c_float * size)()
+        else:
+            c_param_val = (c_uint32 * size)()
+        if (len(vals) == 1):
+            c_param_val[:] = [vals[0]] * size       #This line is where every channel is set to the same value
+        else:
+            for num,val in enumerate(vals):
+                c_param_val[num] = val
+        c_ch_list = (c_ushort * size)()
+        for num,ch in enumerate(chns):
+            c_ch_list[num] = ch
+        return_code = self.libcaenhvwrapper.CAENHV_SetChParam(self.caen,
+                                                            c_ushort(self.slot),
+                                                            param.encode('utf-8'),      #Parameter to write
+                                                            c_ushort(size),             #Number of channels you want to write (say 3)
+                                                            byref(c_ch_list),           #Which specific channels you want to write (say 12, 5, and 8 in that order)
+                                                            byref(c_param_val))         #The array of values for each channel you're writing to
+        self.check_return(return_code, f"Writing value {vals} for channels {chns}, parameter {param} failed")
+
     #Simple class for checking error responses from the instrument and printing messages if applicable
     def check_return(self, ret, failmessage = None, passmessage = None):
         if (ret != 0):
-            if (message):
+            if (ret == 2):
+                print(f"{self.prefix} --> Write Error, the CAEN R8033DM is probably not in remote programming mode. Check the panel to set it to 'Remote' rather than 'Local'")
+            if (failmessage):
                 print(f"{self.prefix} --> {failmessage}")
                 print(f"{self.prefix} --> Attempt to communicate with CAEN R8033DM resulted in error code {hex(ret)}")
             return -1
