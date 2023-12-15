@@ -15,7 +15,7 @@ class LDOmeasure:
         self.rm = pyvisa.ResourceManager('@py')
 
         c = CAENR8033DM(self.json_data)
-        sys.exit()
+        sys.exit("We have finished the Caen")
 
         k = Keysight970A(self.rm, self.json_data)
         k.set_relay(24, 69)
