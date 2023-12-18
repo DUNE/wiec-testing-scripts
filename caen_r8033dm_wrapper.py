@@ -1,11 +1,14 @@
 
 from caen_r8033dm import CAENR8033DM
 import sys
+import time
 
 class CAENR8033DM_WRAPPER:
     def __init__(self, json_data):
         self.prefix = "CAEN R8033DM"    #Prefix for log messages
         self.caen = CAENR8033DM(json_data)
+        self.rounding_factor = 2
+        self.ramp_wait = 1
         if (self.caen.caen.value == -1):
             sys.exit(f"{self.prefix} --> Device could not be intialized, returned {self.caen.caen.value}")
 
@@ -32,12 +35,73 @@ class CAENR8033DM_WRAPPER:
         # self.set_rampup([3,4,5], 45)
         # self.set_powerdown([3,4], [0,1])
 
+        self.set_HV_value(2, 500)
+        self.set_rampup(2, 50)
+        self.set_rampdown(2, 50)
+        self.turn_on(2)
+        self.turn_off(2)
+        #self.turn_on(2)
+
 
     def turn_on(self, ch):
-        print("here")
+        status = self.get_channel_status(ch)
+        if (not isinstance(ch, list)):
+            if (status > 0x7):
+                self.channel_error(i, status[num])
+            self.caen.set_ch_parameter(ch, "Pw", 1)
+            self.get_check_channel_parameter(ch, "Pw", 1)
+            time.sleep(self.ramp_wait)                                      #Need the device to update, sometimes it says it's completed before it starts
+            if (self.get_channel_status(ch) != 1):
+                self.wait_for_ramp(ch, True)
+        else:
+            for num,i in enumerate(ch):
+                if (status[num] > 0x7):
+                    self.channel_error(i, status[num])
+                self.caen.set_ch_parameter(ch, "Pw", 1)
+                self.get_check_channel_parameter(ch, "Pw", 1)
+                time.sleep(self.ramp_wait)
+                for i in ch:
+                    if (self.get_channel_status(i) != 1):
+                        self.wait_for_ramp(ch, True)
 
     def turn_off(self, ch):
-        print("here")
+        status = self.get_channel_status(ch)
+        if (not isinstance(ch, list)):
+            if (status > 0x7):
+                self.channel_error(i, status[num])
+            self.caen.set_ch_parameter(ch, "Pw", 0)
+            self.get_check_channel_parameter(ch, "Pw", 0)
+            time.sleep(self.ramp_wait)
+            if (self.get_channel_status(ch) != 0):
+                self.wait_for_ramp(ch, False)
+        else:
+            for num,i in enumerate(ch):
+                if (status[num] > 0x7):
+                    self.channel_error(i, status[num])
+                self.caen.set_ch_parameter(ch, "Pw", 0)
+                self.get_check_channel_parameter(ch, "Pw", 0)
+                time.sleep(self.ramp_wait)
+                for i in ch:
+                    if (self.get_channel_status(i) != 0):
+                        self.wait_for_ramp(ch, False)
+
+    def wait_for_ramp(self, ch, going_up):
+        done = False
+        while(not done):
+            #print(self.get_channel_status(ch))
+            #print(self.caen.get_channel_parameter_value(ch, "Pw"))
+            if (going_up):
+                if (self.get_channel_status(ch) == 1):
+                    break
+                print(f"{self.prefix} --> Channel {ch} is ramping up to {self.get_HV_value(ch)}, currently at {self.get_voltage(ch)}")
+            else:
+                if (self.get_channel_status(ch) == 0):
+                    break
+                print(f"{self.prefix} --> Channel {ch} is ramping down to turn off, currently at {self.get_voltage(ch)}")
+            time.sleep(self.ramp_wait)
+            if (self.get_channel_status(ch) > 0x7):
+                self.channel_error(i, self.get_channel_status(ch))
+
 
     def get_voltage(self, ch):
         return self.caen.get_channel_parameter_value(ch, "VMon")
@@ -100,13 +164,17 @@ class CAENR8033DM_WRAPPER:
     def get_check_channel_parameter(self, ch, param, value):
         resp = self.caen.get_channel_parameter_value(ch, param)
         if (isinstance(ch, list) and not isinstance(value, list)):
-            if (not all(i == value for i in resp)):
-                sys.exit(f"{self.prefix} --> Wrote {value} to {param}, read back {resp} list")
+            for num in range(len(ch)):
+                if (round(resp[num],self.rounding_factor) != value):
+                    print(f"{self.prefix} --> {self.get_channel_status(ch[num])}")
+                    sys.exit(f"{self.prefix} --> Wrote {value} to {param}, read back {resp} list")
         elif (isinstance(ch, list) and isinstance(value, list)):
             for num,i in enumerate(value):
-                if (round(resp[num],2) != i):
+                if (round(resp[num],self.rounding_factor) != i):
+                    print(f"{self.prefix} --> {self.get_channel_status(ch[num])}")
                     sys.exit(f"{self.prefix} --> Wrote {value} to {param}, read back {resp} list")
-        elif (round(resp,2) != value):
+        elif (round(resp,self.rounding_factor) != value):
+            print(f"{self.prefix} --> {self.get_channel_status(ch)}")
             sys.exit(f"{self.prefix} --> Wrote {value} to {param}, read back {resp}")
         return resp
 
@@ -127,3 +195,33 @@ class CAENR8033DM_WRAPPER:
             return self.caen.board_params['BdCtr']['Onstate']
         else:
             return self.caen.board_params['BdCtr']['Offstate']
+
+    def channel_error(self, ch, val):
+        if (val > 0x7):
+            print(f"{self.prefix} --> Error code {hex(val)}")
+            if (val & 0x8):
+                sys.exit(f"{self.prefix} --> Channel {ch} is overcurrent")
+            elif (val & 0x10):
+                sys.exit(f"{self.prefix} --> Channel {ch} is overvoltage")
+            elif (val & 0x20):
+                sys.exit(f"{self.prefix} --> Channel {ch} is undervoltage")
+            elif (val & 0x40):
+                sys.exit(f"{self.prefix} --> Channel {ch} has tripped due to overcurrent")
+            elif (val & 0x80):
+                sys.exit(f"{self.prefix} --> Channel {ch} is overpowered")
+            elif (val & 0x100):
+                sys.exit(f"{self.prefix} --> Channel {ch} has a temperature warning")
+            elif (val & 0x200):
+                sys.exit(f"{self.prefix} --> Channel {ch} is over temperature")
+            elif (val & 0x400):
+                sys.exit(f"{self.prefix} --> Channel {ch}'s switch is in the kill state")
+            elif (val & 0x800):
+                sys.exit(f"{self.prefix} --> Channel {ch}'s interlock is tripped")
+            elif (val & 0x1000):
+                sys.exit(f"{self.prefix} --> Channel {ch}'s switch is in the off state")
+            elif (val & 0x2000):
+                sys.exit(f"{self.prefix} --> Channel {ch} has a general failure")
+            elif (val & 0x4000):
+                sys.exit(f"{self.prefix} --> Channel {ch}'s switch is on but in local mode")
+            elif (val & 0x20):
+                sys.exit(f"{self.prefix} --> Channel {ch}'s voltage exceeds the hardware max")
