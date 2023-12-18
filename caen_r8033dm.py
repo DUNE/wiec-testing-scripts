@@ -64,11 +64,15 @@ class CAENR8033DM:
         self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Pw", [0])
         self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Pw")
         self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Status")
+
+        self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange", [1])
+        self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange")
+
         print("Channel properties are:")
         pprint.pprint(self.ch_params, width = 1)
 
-        print("Board level properties are:")
-        pprint.pprint(self.board_params, width = 1)
+        #print("Board level properties are:")
+        #pprint.pprint(self.board_params, width = 1)
 
     def __del__(self):
         return_code = self.libcaenhvwrapper.CAENHV_DeinitSystem(self.caen)
@@ -257,6 +261,7 @@ class CAENR8033DM:
 
         self.check_return(return_code, f"Retrieving value for parameter {param} failed")
         self.board_params[param]["Value"] = c_param_val.value
+        return c_param_val.value
 
     #This function gets the parameters for a representative channel and makes a big dictionary with all channels' properties, permissions and value
     #Parameters are things like the voltae setting, the ramp down speed, the current trigger setting and so on
@@ -403,7 +408,7 @@ class CAENR8033DM:
         if (self.ch_params[chns[0]][param]['Type'] == self.PropertyType.PARAM_TYPE_FLOAT.name):
             c_param_val = (c_float * size)()
         else:
-            c_param_val = (c_long * size)()
+            c_param_val = (c_uint32 * size)()
         c_ch_list = (c_ushort * size)()
         for num,ch in enumerate(chns):
             c_ch_list[num] = ch
@@ -419,6 +424,11 @@ class CAENR8033DM:
         else:
             for ch in chns:
                 self.ch_params[ch][param]["Value"] = self.error
+
+        if (len(chns) == 1):
+            return c_param_val[0]
+        else:
+            return [round(i,2) for i in c_param_val]
 
     #This is a curious function. You pass in a channel like 5 and it returns "CH05"
     #And you can ask for multiple, say channels 12, 4, and 8. Sure enough, you get "Ch12, Ch04, Ch08"

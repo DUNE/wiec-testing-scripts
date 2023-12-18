@@ -4,7 +4,7 @@ import json
 import os
 from keysight_daq970a import Keysight970A
 from rigol_dp832a import RigolDP832A
-from caen_r8033dm import CAENR8033DM
+from caen_r8033dm_wrapper import CAENR8033DM_WRAPPER
 
 class LDOmeasure:
     def __init__(self, config_file, name):
@@ -14,7 +14,7 @@ class LDOmeasure:
             self.json_data = json.load(jsonfile)
         self.rm = pyvisa.ResourceManager('@py')
 
-        c = CAENR8033DM(self.json_data)
+        c = CAENR8033DM_WRAPPER(self.json_data)
         sys.exit("We have finished the Caen")
 
         k = Keysight970A(self.rm, self.json_data)
