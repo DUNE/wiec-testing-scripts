@@ -43,6 +43,7 @@ class LDOmeasure:
         fanread_current = self.r1.get_current("fanread")
         fan_read_signal = self.k.measure_fan()
         self.r0.power("OFF", "fan")
+        self.r0.power("OFF", "fanread")
         print(f"{self.prefix} --> Fans turned off")
         print(f"{self.prefix} --> Fan power supply was {fan_voltage}V and {fan_current}A")
         print(f"{self.prefix} --> Read signal for each fan was {fan_read_signal}")
@@ -83,6 +84,7 @@ class LDOmeasure:
             #Do the positive voltage with open termination
             self.k.set_relay(0 << i, 0)
             self.c.turn_on(i)
+            print(f"{self.prefix} --> HV reached max value, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
             hv_results[i] = {"P,NT,V" : self.c.get_voltage(i)}
             hv_results[i]["P,NT,C"] = self.c.get_current(i)
 
@@ -94,10 +96,12 @@ class LDOmeasure:
             hv_results[i]["P,10k,V"] = self.c.get_voltage(i)
             hv_results[i]["P,10k,C"] = self.c.get_current(i)
             self.c.turn_off(i)
+            print(f"{self.prefix} --> HV turned off, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
 
             #Turn on negative voltage
             self.k.set_relay(1 << i, 0)
             self.c.turn_on(i+8)
+            print(f"{self.prefix} --> HV reached max value, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
             hv_results[i]["N,NT,V"] = self.c.get_voltage(i)
             hv_results[i]["N,NT,C"] = self.c.get_current(i)
 
@@ -109,10 +113,11 @@ class LDOmeasure:
             hv_results[i]["N,10k,V"] = self.c.get_voltage(i)
             hv_results[i]["N,10k,C"] = self.c.get_current(i)
             self.c.turn_off(i+8)
+            print(f"{self.prefix} --> HV turned off, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
 
             print(f"{self.prefix} --> Channel {i} HV results are {hv_results[i]}")
 
-
+        self.r1.power("OFF", "hvpullup")
         print(f"{self.prefix} --> Test complete")
 
 if __name__ == "__main__":

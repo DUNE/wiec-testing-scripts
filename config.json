@@ -80,6 +80,7 @@
 "rigol832a_fanread_overcurrent": "0.5",
 "rigol832a_fanread_overcurrent_en": "ON",
 
+"hv_stability_wait": "2",
 "hv_termination_wait": "2",
 "heat_wait": "10",
 "fan_wait": "10"
