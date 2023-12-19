@@ -4,8 +4,8 @@
 "caenR8033DM_current_range": "0",
 "caenR8033DM_overcurrent": "300",
 "caenR8033DM_power_down_mode": "1",
-"caenR8033DM_ramp_down": "100",
-"caenR8033DM_ramp_up": "100",
+"caenR8033DM_ramp_down": "500",
+"caenR8033DM_ramp_up": "500",
 "caenR8033DM_trip_time": "10",
 "caenR8033DM_voltage": "2000",
 
@@ -47,14 +47,40 @@
 "keysight970a_fan_autoimpedance": "ON",
 "keysight970a_fan_delay": "1",
 
-"rigol832a": "TCPIP::169.254.4.20::INSTR",
+"rigol832a0": "TCPIP::169.254.4.20::INSTR",
+"rigol832a1": "TCPIP::169.254.4.21::INSTR",
+
 "rigol832a_fan_ch": "1",
 "rigol832a_fan_voltage": "24",
 "rigol832a_fan_current": "0.8",
 "rigol832a_fan_overcurrent": "1",
 "rigol832a_fan_overcurrent_en": "ON",
 
-"measurement_period": "10",
-"test_lp": "1",
-"test_adm": "1"
+"rigol832a_heater_supply_ch": "2",
+"rigol832a_heater_supply_voltage": "12",
+"rigol832a_heater_supply_current": "2.8",
+"rigol832a_heater_supply_overcurrent": "3",
+"rigol832a_heater_supply_overcurrent_en": "ON",
+
+"rigol832a_heater_switch_ch": "3",
+"rigol832a_heater_switch_voltage": "5",
+"rigol832a_heater_switch_current": "0.05",
+"rigol832a_heater_switch_overcurrent": "0.1",
+"rigol832a_heater_switch_overcurrent_en": "ON",
+
+"rigol832a_hvpullup_ch": "4",
+"rigol832a_hvpullup_voltage": "20",
+"rigol832a_hvpullup_current": "3",
+"rigol832a_hvpullup_overcurrent": "3.1",
+"rigol832a_hvpullup_overcurrent_en": "ON",
+
+"rigol832a_fanread_ch": "6",
+"rigol832a_fanread_voltage": "5",
+"rigol832a_fanread_current": "0.2",
+"rigol832a_fanread_overcurrent": "0.5",
+"rigol832a_fanread_overcurrent_en": "ON",
+
+"hv_termination_wait": "2",
+"heat_wait": "10",
+"fan_wait": "10"
 }
