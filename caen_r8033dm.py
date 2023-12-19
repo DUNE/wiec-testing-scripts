@@ -18,6 +18,7 @@ class CAENR8033DM:
     def __init__(self, json_data):
         self.prefix = "CAEN R8033DM"    #Prefix for log messages
         self.error = "Error"            #Listing in the dictionary for when the return is an error
+        self.rounding_factor = 2        #Round the return floats to this value
         self.model_id = 13              #13 is the value for the 803X series
         self.comm_protocol = 0          #0 is the value for TCP/IP
         self.slot = 0                   #R8033DM only has one logical slot
@@ -68,8 +69,8 @@ class CAENR8033DM:
         self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange", [1])
         self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange")
 
-        print("Channel properties are:")
-        pprint.pprint(self.ch_params, width = 1)
+        #print("Channel properties are:")
+        #pprint.pprint(self.ch_params, width = 1)
 
         #print("Board level properties are:")
         #pprint.pprint(self.board_params, width = 1)
@@ -425,10 +426,13 @@ class CAENR8033DM:
             for ch in chns:
                 self.ch_params[ch][param]["Value"] = self.error
 
+        #I realized that upstream functions want this value returned to them
+        #Since this function can accept a single value or an array, return what was passed in
+        #Floats are rounded to make the comparison for a write easier
         if (len(chns) == 1):
             return c_param_val[0]
         else:
-            return [round(i,2) for i in c_param_val]
+            return [round(i,self.rounding_factor) for i in c_param_val]
 
     #This is a curious function. You pass in a channel like 5 and it returns "CH05"
     #And you can ask for multiple, say channels 12, 4, and 8. Sure enough, you get "Ch12, Ch04, Ch08"

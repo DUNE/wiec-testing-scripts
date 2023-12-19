@@ -15,7 +15,7 @@ class LDOmeasure:
         self.rm = pyvisa.ResourceManager('@py')
 
         c = CAENR8033DM_WRAPPER(self.json_data)
-        sys.exit("We have finished the Caen")
+        #sys.exit("We have finished the Caen")
 
         k = Keysight970A(self.rm, self.json_data)
         k.set_relay(24, 69)
@@ -34,6 +34,7 @@ class LDOmeasure:
         r.get_current("fan")
         print(r.get_voltage("fan"))
         print(r.check_overcurr_protection("fan"))
+        r.power("ON", "fan")
 
         self.name = name
         self.begin_measurement()

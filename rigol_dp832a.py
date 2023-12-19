@@ -16,8 +16,7 @@ class RigolDP832A:
     #Because I want to decouple the name of the channel with the actual number, this will need to be called almost every time
     def get_ch_with_name(self, ch):
         if (ch == "fan"):
-            chan = self.json_data['rigol832a_fan_ch']
-
+            return self.json_data['rigol832a_fan_ch']
         else:
             print(f"{self.prefix} --> WARNING: Did not understand channel type {ch}")
             return 0

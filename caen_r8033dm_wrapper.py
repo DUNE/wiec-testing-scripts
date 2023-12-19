@@ -5,10 +5,11 @@ import time
 
 class CAENR8033DM_WRAPPER:
     def __init__(self, json_data):
-        self.prefix = "CAEN R8033DM"    #Prefix for log messages
-        self.caen = CAENR8033DM(json_data)
-        self.rounding_factor = 2
-        self.ramp_wait = 1
+        self.prefix = "CAEN R8033DM"            #Prefix for log messages
+        self.json_data = json_data
+        self.caen = CAENR8033DM(json_data)      #Creates instance of lower level which holds the connection
+        self.rounding_factor = 2                #When comparing floats, we need to round
+        self.ramp_wait = 1                      #Time between checks when ramping up or down
         if (self.caen.caen.value == -1):
             sys.exit(f"{self.prefix} --> Device could not be intialized, returned {self.caen.caen.value}")
 
@@ -22,72 +23,70 @@ class CAENR8033DM_WRAPPER:
         if (self.get_board_status() != 0):
             sys.exit(f"{self.prefix} --> Board failed with error {hex(self.get_board_status())}")
 
+        channels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        self.set_current_range(channels, int(self.json_data['caenR8033DM_current_range']))
+        self.set_overcurrent(channels, float(self.json_data['caenR8033DM_overcurrent']))
+        self.set_powerdown(channels, int(self.json_data['caenR8033DM_power_down_mode']))
+        self.set_rampdown(channels, float(self.json_data['caenR8033DM_ramp_down']))
+        self.set_rampup(channels, float(self.json_data['caenR8033DM_ramp_up']))
+        self.set_trip_time(channels, float(self.json_data['caenR8033DM_trip_time']))
+        self.set_HV_value(channels, float(self.json_data['caenR8033DM_voltage']))
+
         # print(self.get_channel_status(3))
         # print(self.get_channel_status([3,4,5,6, 7]))
-        #
+
         # self.set_powerdown([4, 5], 1)
-        # self.set_HV_value([4, 5], 69.42)
+        # self.set_HV_value([4, 5, 7], 690.42)
         # self.set_overcurrent(5, 34.35)
         # self.set_current_range(1, 0)
         # self.set_current_range(1, 1)
         # self.set_trip_time([4,5,6], [7.7,8.8,9])
-        # self.set_rampdown(3, 57)
+        # self.set_rampdown([2,7], 50)
         # self.set_rampup([3,4,5], 45)
         # self.set_powerdown([3,4], [0,1])
-
-        self.set_HV_value(2, 500)
-        self.set_rampup(2, 50)
-        self.set_rampdown(2, 50)
-        self.turn_on(2)
-        self.turn_off(2)
-        #self.turn_on(2)
+        #
+        # self.set_HV_value(2, 500)
+        # self.set_rampup(2, 50)
+        # self.set_rampdown(2, 50)
+        # self.turn_on([2,7])
+        # self.turn_off([2,7])
+        # self.turn_on([2,7])
+        # self.turn_off([2,7])
 
 
     def turn_on(self, ch):
-        status = self.get_channel_status(ch)
-        if (not isinstance(ch, list)):
-            if (status > 0x7):
-                self.channel_error(i, status[num])
-            self.caen.set_ch_parameter(ch, "Pw", 1)
-            self.get_check_channel_parameter(ch, "Pw", 1)
-            time.sleep(self.ramp_wait)                                      #Need the device to update, sometimes it says it's completed before it starts
-            if (self.get_channel_status(ch) != 1):
-                self.wait_for_ramp(ch, True)
-        else:
-            for num,i in enumerate(ch):
-                if (status[num] > 0x7):
-                    self.channel_error(i, status[num])
-                self.caen.set_ch_parameter(ch, "Pw", 1)
-                self.get_check_channel_parameter(ch, "Pw", 1)
-                time.sleep(self.ramp_wait)
-                for i in ch:
-                    if (self.get_channel_status(i) != 1):
-                        self.wait_for_ramp(ch, True)
+        self.power_cycle(ch, True)
 
     def turn_off(self, ch):
-        status = self.get_channel_status(ch)
-        if (not isinstance(ch, list)):
-            if (status > 0x7):
-                self.channel_error(i, status[num])
-            self.caen.set_ch_parameter(ch, "Pw", 0)
-            self.get_check_channel_parameter(ch, "Pw", 0)
-            time.sleep(self.ramp_wait)
-            if (self.get_channel_status(ch) != 0):
-                self.wait_for_ramp(ch, False)
-        else:
-            for num,i in enumerate(ch):
-                if (status[num] > 0x7):
-                    self.channel_error(i, status[num])
-                self.caen.set_ch_parameter(ch, "Pw", 0)
-                self.get_check_channel_parameter(ch, "Pw", 0)
-                time.sleep(self.ramp_wait)
-                for i in ch:
-                    if (self.get_channel_status(i) != 0):
-                        self.wait_for_ramp(ch, False)
+        self.power_cycle(ch, False)
 
+    def power_cycle(self, ch, up):
+        if (up):
+            value = 1
+        else:
+            value = 0
+        status = self.get_channel_status(ch)
+        #Make it work for both single channels and lists
+        if (not isinstance(ch, list)):
+            ch = [ch]
+            status = [status]
+        #Check if there's any error in the channels before the power is touched
+        for num,i in enumerate(ch):
+            if (status[num] > 0x7):
+                self.channel_error(i, status[num])
+        #Set all the channels to turn on or off
+        self.caen.set_ch_parameter(ch, "Pw", value)
+        #Need the device status to update, sometimes it says it's completed before it starts
+        time.sleep(self.ramp_wait)
+        #If any channels are ramping, wait for ramping to finish
+        for num,i in enumerate(ch):
+            self.get_power_status(ch[num])
+            if (self.get_channel_status(ch[num]) != value):
+                self.wait_for_ramp(ch[num], up)
+
+    #Monitor the ramping of the power, while checking to see if channel status throws and error
     def wait_for_ramp(self, ch, going_up):
-        done = False
-        while(not done):
+        while(True):
             #print(self.get_channel_status(ch))
             #print(self.caen.get_channel_parameter_value(ch, "Pw"))
             if (going_up):
@@ -102,7 +101,7 @@ class CAENR8033DM_WRAPPER:
             if (self.get_channel_status(ch) > 0x7):
                 self.channel_error(i, self.get_channel_status(ch))
 
-
+    #These functions basically get and set different parameters of each channel, with a variable amount of channels as the input
     def get_voltage(self, ch):
         return self.caen.get_channel_parameter_value(ch, "VMon")
 
@@ -161,6 +160,13 @@ class CAENR8033DM_WRAPPER:
     def get_channel_status(self, ch):
         return self.caen.get_channel_parameter_value(ch, "Status")
 
+    def get_power_status(self, ch):
+        return self.caen.get_channel_parameter_value(ch, "Pw")
+
+    #After setting a parameter, this function is called to get the reading of that parameter
+    #It should agree, if it doesn't, it throws an error
+    #Much of the loops is just dealing with that you can send a single channel and value
+    #Or multiple channels and 1 value, or multiple channels and values
     def get_check_channel_parameter(self, ch, param, value):
         resp = self.caen.get_channel_parameter_value(ch, param)
         if (isinstance(ch, list) and not isinstance(value, list)):
@@ -178,6 +184,7 @@ class CAENR8033DM_WRAPPER:
             sys.exit(f"{self.prefix} --> Wrote {value} to {param}, read back {resp}")
         return resp
 
+    #Getting board level parameters doesn't require a channel
     def get_board_status(self):
         return self.caen.get_board_parameter_value("BdStatus")
 
@@ -196,6 +203,7 @@ class CAENR8033DM_WRAPPER:
         else:
             return self.caen.board_params['BdCtr']['Offstate']
 
+    #Channel status is passed here, if it's not settled or ramping up/down, I assume there's an error and throw it
     def channel_error(self, ch, val):
         if (val > 0x7):
             print(f"{self.prefix} --> Error code {hex(val)}")
