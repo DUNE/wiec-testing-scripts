@@ -10,20 +10,20 @@
 "heat_wait": "10",
 "fan_wait": "10",
 
-"fan_voltage_max": "13",
-"fan_voltage_min": "11",
-"fan_current_max": "0.9",
-"fan_current_min": "0.7",
-"fan_read_max": "0.9",
-"fan_read_min": "0.7",
+"fan_voltage_max": "12.5",
+"fan_voltage_min": "11.5",
+"fan_current_max": "0.65",
+"fan_current_min": "0.45",
+"fan_read_max": "2.5",
+"fan_read_min": "1.5",
 
 "heating_element_max": "20",
 "heating_element_min": "14",
 "temp_increase_max": "5",
 "temp_increase_min": "1",
 
-"hv_resistance_max": "1E6",
-"hv_resistance_min": "0.001",
+"hv_resistance_max": "1E9",
+"hv_resistance_min": "1E6",
 
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
@@ -77,7 +77,7 @@
 "rigol832a1": "TCPIP::169.254.4.21::INSTR",
 
 "rigol832a_fan_ch": "1",
-"rigol832a_fan_voltage": "24",
+"rigol832a_fan_voltage": "12",
 "rigol832a_fan_current": "0.8",
 "rigol832a_fan_overcurrent": "1",
 "rigol832a_fan_overcurrent_en": "ON",
