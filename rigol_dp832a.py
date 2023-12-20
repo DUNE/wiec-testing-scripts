@@ -73,7 +73,7 @@ class RigolDP832A:
             chan = self.get_ch_with_name(ch)
             if (chan != 0):
                 self.rigol.write(f"OUTPut:STATe CH{chan},{onoff}")
-                print(f"{self.prefix} --> Turned {onoff} {ch}- Channel {chan}")
+                print(f"{self.prefix} --> Turned {onoff} Power Supply {self.index+1}, {ch}- Channel {chan}")
         else:
             print(f"{self.prefix} --> WARNING: Did not understand on/off choise {onoff}")
 

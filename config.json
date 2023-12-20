@@ -1,4 +1,30 @@
 {
+"output_directory": "results",
+"output_file": "DUNE_HV_Crate_Production_Test.xlsx",
+"relative": "True",
+"sheet_name": "Test Results",
+"rounding_factor": "2",
+
+"hv_stability_wait": "2",
+"hv_termination_wait": "2",
+"heat_wait": "10",
+"fan_wait": "10",
+
+"fan_voltage_max": "13",
+"fan_voltage_min": "11",
+"fan_current_max": "0.9",
+"fan_current_min": "0.7",
+"fan_read_max": "0.9",
+"fan_read_min": "0.7",
+
+"heating_element_max": "20",
+"heating_element_min": "14",
+"temp_increase_max": "5",
+"temp_increase_min": "1",
+
+"hv_resistance_max": "1E6",
+"hv_resistance_min": "0.001",
+
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
 "caenR8033DM_current_range": "0",
@@ -78,10 +104,5 @@
 "rigol832a_fanread_voltage": "5",
 "rigol832a_fanread_current": "0.2",
 "rigol832a_fanread_overcurrent": "0.5",
-"rigol832a_fanread_overcurrent_en": "ON",
-
-"hv_stability_wait": "2",
-"hv_termination_wait": "2",
-"heat_wait": "10",
-"fan_wait": "10"
+"rigol832a_fanread_overcurrent_en": "ON"
 }
