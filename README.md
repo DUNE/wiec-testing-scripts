@@ -10,3 +10,7 @@ Which should set up the virtual environment and the require Python packages. The
 Run like:
 
 `python3 dune_hv_crate_test.py config.json`
+
+The script will ask you to name the test once it starts. Alternatively you can just put the name in the command, like:
+
+`python3 dune_hv_crate_test.py config.json name_of_test`
