@@ -9,6 +9,7 @@ class RigolDP832A:
     def __init__(self, rm, json_data, index):
         self.prefix = "Rigol DP832A"
         self.json_data = json_data
+        #There are 2 Rigols in this setup, the index determines which one this is
         self.rigol = rm.open_resource(self.json_data[f'rigol832a{index}'])
         print(f"{self.prefix} --> Connected to {self.rigol.query('*IDN?')}")
         self.rigol.write("*RST")
@@ -16,6 +17,8 @@ class RigolDP832A:
         self.index = index
         self.channel_num = 3
 
+    #This way of initializing each channel and then adding it to a list that gets checked ensures that the higher level test code doesn't mistake which type of channel is on which Rigol
+    #So the first Rigol has channels 1,2, and 3. The second Rigol has channels 4,5, and 6. And this converts it to the local Rigol nomenclature
     def setup_fan(self):
         self.rigol.write(f"SOURce{self.json_data['rigol832a_fan_ch'] - (self.channel_num * self.index)}:VOLTage:LEVel:IMMediate:AMPLitude {self.json_data['rigol832a_fan_voltage']}")
         self.rigol.write(f"SOURce{self.json_data['rigol832a_fan_ch'] - (self.channel_num * self.index)}:CURRent:LEVel:IMMediate:AMPLitude {self.json_data['rigol832a_fan_current']}")
@@ -51,7 +54,7 @@ class RigolDP832A:
         self.rigol.write(f"SOURce{self.json_data['rigol832a_fanread_ch'] - (self.channel_num * self.index)}:CURRent:PROTection:STATe {self.json_data['rigol832a_fanread_overcurrent_en']}")
         self.channels.append("fanread")
 
-    #Because I want to decouple the name of the channel with the actual number, this will need to be called almost every time
+    #Because I want to decouple the name of the channel with the actual number, this will need to be called every time
     def get_ch_with_name(self, ch):
         if (ch == "fan" and "fan" in self.channels):
             return self.json_data['rigol832a_fan_ch'] - (self.channel_num * self.index)

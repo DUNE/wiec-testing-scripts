@@ -47,9 +47,6 @@ class Keysight970A:
             else:
                 self.heater_ch_list += (f",{ch_string}")
 
-        supply_string = f"{heater_slot}{self.json_data[f'keysight970a_heater_supply']:02d}"
-        self.heater_ch_list_power = self.heater_ch_list + (f",{supply_string}")
-
         #Build the string of the list of fan channels
         self.fan_ch_list = ""
         self.fan_convert = {}
@@ -74,16 +71,17 @@ class Keysight970A:
         self.keysight.write(f"CONFigure:TEMPerature:FRTD {self.json_data['keysight970a_rtd_RES']},DEF,({self.rtd_ch_list})")
 
         #Sets the sample rate a little slower for accuracy, whether in low power mode or not, and units to use
-        self.keysight.write(f"SENSe1:TEMPerature:NPLCycles {self.json_data['keysight970a_rtd_NPLcycles']},({self.rtd_ch_list})")
-        self.keysight.write(f"SENSe1:TEMPerature:TRANsducer:FRTD:POWer:LIMit:STATe {self.json_data['keysight970a_rtd_LowPower']},({self.rtd_ch_list})")
+        self.keysight.write(f"SENSe:TEMPerature:NPLCycles {self.json_data['keysight970a_rtd_NPLcycles']},({self.rtd_ch_list})")
+        self.keysight.write(f"SENSe:TEMPerature:TRANsducer:FRTD:POWer:LIMit:STATe {self.json_data['keysight970a_rtd_LowPower']},({self.rtd_ch_list})")
         self.keysight.write(f"UNIT:TEMPerature {self.json_data['keysight970a_rtd_units']},({self.rtd_ch_list})")
         self.keysight.write("FORMat:READing:CHANnel ON")
 
         self.state = "rtd"
 
     def initialize_resistance(self):
-        self.keysight.write(f"CONFigure:RESistance AUTO,DEF,({self.heater_ch_list})")
+        self.keysight.write(f"CONFigure:FRESistance AUTO,DEF,({self.heater_ch_list})")
         self.keysight.write(f"SENSe:RESistance:NPLCycles {self.json_data['keysight970a_heater_NPLcycles']},({self.heater_ch_list})")
+        self.keysight.write(f"SENSe:FRESistance:POWer:LIMit:STATe {self.json_data['keysight970a_heater_LowPower']},({self.heater_ch_list})")
         self.keysight.write(f"SENSe:RESistance:OCOMpensated {self.json_data['keysight970a_heater_ocomp']},({self.heater_ch_list})")
         self.keysight.write("FORMat:READing:CHANnel ON")
 
@@ -97,12 +95,6 @@ class Keysight970A:
         self.keysight.write("FORMat:READing:CHANnel ON")
 
         self.state = "fan"
-
-    def heaters_on(self):
-        self.keysight.write("ROUTe:SCAN (@)")
-        self.keysight.write(f"ROUTe:CLOSe ({self.heater_ch_list_power})")
-
-        self.state = "heating"
 
     #Sets the output channels for the HV relay control. Easier to split it into 2 blocks with separate functions
     def set_relay(self, hv, term):
@@ -140,13 +132,8 @@ class Keysight970A:
         if (self.state != "resistance"):
             print(f"{self.prefix} --> Tried to measure resistance without being in the resistance state! State is {self.state}!")
             return None
-        #Response is something like
-        #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
-        #Get rid of /n at the end of the string
         resp = self.keysight.query("READ?", delay = self.json_data['keysight970a_heater_delay']).strip()
-        #Split commas into lists
         sep = resp.split(",")
-        #Make a dictionary with the channel as the key and the float reading as value
         results = {}
         for i in range(0,(self.num_rtds * 2)-1,2):
             results[self.heater_convert[f"{sep[i+1]}"]] = float(sep[i])
@@ -157,13 +144,9 @@ class Keysight970A:
         if (self.state != "fan"):
             print(f"{self.prefix} --> Tried to measure fan without being in the fan state! State is {self.state}!")
             return None
-        #Response is something like
-        #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
-        #Get rid of /n at the end of the string
         resp = self.keysight.query("READ?", delay = self.json_data['keysight970a_fan_delay']).strip()
         #Split commas into lists
         sep = resp.split(",")
-        #Make a dictionary with the channel as the key and the float reading as value
         results = {}
         for i in range(0,(self.num_rtds * 2)-1,2):
             results[self.fan_convert[f"{sep[i+1]}"]] = float(sep[i])

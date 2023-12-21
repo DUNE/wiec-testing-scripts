@@ -22,6 +22,7 @@ class LDOmeasure:
         self.k = Keysight970A(self.rm, self.json_data)
 
         #Since there are 2 Rigols, set them up here so they know what channels they have
+        #And if the test sequence calls the wrong one, it'll throw an error
         self.r0 = RigolDP832A(self.rm, self.json_data, 0)
         self.r0.setup_fan()
         self.r0.setup_heater_supply()
@@ -31,12 +32,15 @@ class LDOmeasure:
         self.r1.setup_hvpullup()
         self.r1.setup_fanread()
 
+        #Now we can get the input for the name of the test
         if (name):
             self.test_name = name
         else:
             self.test_name = input("Input the test name:\n")
 
         self.rounding_factor = self.json_data["rounding_factor"]
+        #The datastore is the eventual output JSON file that will be written after the test
+        #Want to also include what the inputs for this particular test was
         self.datastore = {}
         self.datastore['input_params'] = self.json_data
         self.datastore['test_name'] = self.test_name
@@ -45,7 +49,10 @@ class LDOmeasure:
         self.initialize_spreadsheet()
         self.sequence()
 
+    #Looks to see if a main spreadsheet of all results exists. If it does, open it and find the next row to write these results to
+    #If not, it creates the spreadsheet with the proper headers and formatting
     def initialize_spreadsheet(self):
+        #In the config JSON I give the user the ability to choose the absolute path to dump all this stuff into, or make it relative to this Python script
         if (self.json_data["relative"] == "True"):
             output_path = os.path.abspath(self.json_data["output_directory"])
         else:
@@ -68,6 +75,7 @@ class LDOmeasure:
             self.ws = self.wb.active
             self.ws.title = self.json_data["sheet_name"]
 
+            #Once styles are added, they are saved even if you close and reopen the spreadsheet
             top_style = openpyxl.styles.NamedStyle(name="top")
             top_style.font = openpyxl.styles.Font(bold=True, name='Calibri')
             bd = openpyxl.styles.Side(style='thin')
@@ -78,7 +86,7 @@ class LDOmeasure:
             self.fail_style.font = openpyxl.styles.Font(color="FF0000", name='Calibri')
             self.wb.add_named_style(self.fail_style)
 
-            #Yes I'm using magic numbers, but I need to build the spreadsheet in a specific way, hopefully it's only done once
+            #Yes I'm using magic numbers, but I need to build the spreadsheet in a specific way, hopefully it's only done once here
             self.ws.cell(row=2, column=1, value="Test Name").style = top_style
             self.ws.cell(row=2, column=2, value="Date").style = top_style
             self.ws.cell(row=2, column=3, value="Time").style = top_style
@@ -86,21 +94,13 @@ class LDOmeasure:
             self.ws.merge_cells(start_row=1, start_column=4, end_row=1, end_column=9)
             self.ws.cell(row=2, column=4, value="Supply Voltage").style = top_style
             self.ws.cell(row=2, column=5, value="Supply Current").style = top_style
-            self.ws.cell(row=2, column=6, value="Fan 1 RD").style = top_style
-            self.ws.cell(row=2, column=7, value="Fan 2 RD").style = top_style
-            self.ws.cell(row=2, column=8, value="Fan 3 RD").style = top_style
-            self.ws.cell(row=2, column=9, value="Fan 4 RD").style = top_style
+            for i in range(1,5):
+                self.ws.cell(row=2, column=5+i, value=f"Fan {i} RD").style = top_style
+                self.ws.cell(row=2, column=9+i, value=f"TC{i}_Resistance").style = top_style
+                self.ws.cell(row=2, column=13+i, value=f"TC{i}_Temp_Rise").style = top_style
 
-            self.ws.cell(row=1, column=10, value=f"Heater Test - Resistance for each heating element and temperature rise after heating for {self.json_data['heat_wait']} seconds").style = top_style
+            self.ws.cell(row=1, column=10, value="Heater Test - Resistance for each heating element and temperature rise after heating time").style = top_style
             self.ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=17)
-            self.ws.cell(row=2, column=10, value="TC1_Resistance").style = top_style
-            self.ws.cell(row=2, column=11, value="TC2_Resistance").style = top_style
-            self.ws.cell(row=2, column=12, value="TC3_Resistance").style = top_style
-            self.ws.cell(row=2, column=13, value="TC4_Resistance").style = top_style
-            self.ws.cell(row=2, column=14, value="TC1_Temp_Rise").style = top_style
-            self.ws.cell(row=2, column=15, value="TC2_Temp_Rise").style = top_style
-            self.ws.cell(row=2, column=16, value="TC3_Temp_Rise").style = top_style
-            self.ws.cell(row=2, column=17, value="TC4_Temp_Rise").style = top_style
 
             self.ws.cell(row=1, column=18, value="HV Test - Resistance for each configuration").style = top_style
             self.ws.merge_cells(start_row=1, start_column=18, end_row=1, end_column=21+(7*4))
@@ -110,6 +110,7 @@ class LDOmeasure:
                 self.ws.cell(row=2, column=20+(i*4), value=f"Ch{i}- Open").style = top_style
                 self.ws.cell(row=2, column=21+(i*4), value=f"Ch{i}- 10k").style = top_style
 
+            #Expands each column to have the best width to fit everything
             column_letters = tuple(openpyxl.utils.get_column_letter(col_number + 1) for col_number in range(self.ws.max_column))
             for column_letter in column_letters:
                 self.ws.column_dimensions[column_letter].bestFit = True
@@ -117,7 +118,8 @@ class LDOmeasure:
             self.wb.save(self.path_to_spreadsheet)
             self.row = 3
 
-
+        #In any case, start filling in the spreadsheet with initial test parameters we have right know
+        #Test name starts in red so that if the test is incomplete it will show as a fail
         self.ws.cell(row=self.row, column=1, value=self.test_name).style = "fail"
         self.ws.cell(row=self.row, column=2, value=datetime.today().strftime('%m/%d/%Y'))
         self.ws.cell(row=self.row, column=3, value=datetime.today().strftime('%I:%M:%S %p'))
@@ -165,7 +167,6 @@ class LDOmeasure:
                 self.datastore['Tests'][f'fan_signal_test_{i}'] = "Pass"
             else:
                 self.ws.cell(row=self.row, column=5+i, value=round(fan_read_signal[i], self.rounding_factor)).style = "fail"
-                self.datastore['Tests'][f'fan_signal_test_{i}'] = "Fail"
                 fan_test = False
 
         self.datastore['fan_voltage'] = fan_voltage
@@ -280,8 +281,6 @@ class LDOmeasure:
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            print(f"{self.prefix} --> Channel {i} HV results are {hv_results[i]}")
-
             try:
                 hv_results[i]["pos_open_R"] = float(hv_results[i]["pos_open_V"])/float(hv_results[i]["pos_open_I"])
             except ZeroDivisionError:
@@ -299,6 +298,8 @@ class LDOmeasure:
             except ZeroDivisionError:
                 hv_results[i]["neg_term_R"] = 0
 
+            print(f"{self.prefix} --> Channel {i} HV results are {hv_results[i]}")
+
             for num,j in enumerate(["pos_open_R", "pos_term_R", "neg_open_R", "neg_term_R"]):
                 if ((float(hv_results[i][j]) < self.json_data["hv_resistance_max"]) and (float(hv_results[i][j]) > self.json_data["hv_resistance_min"])):
                     self.ws.cell(row=self.row, column=18+(i*4)+num, value=round(float(hv_results[i][j]), self.rounding_factor))
@@ -314,17 +315,8 @@ class LDOmeasure:
             self.ws.cell(row=self.row, column=15+(i*4), value=round(float(hv_results[i]["neg_term_R"]), self.rounding_factor))
 
             self.datastore[f'hv_ch{i}'] = {'pos_open_V' : hv_results[i]["pos_open_V"]}
-            self.datastore[f'hv_ch{i}']['pos_open_I'] = hv_results[i]["pos_open_I"]
-            self.datastore[f'hv_ch{i}']['pos_open_R'] = hv_results[i]["pos_open_R"]
-            self.datastore[f'hv_ch{i}']['pos_term_V'] = hv_results[i]["pos_term_V"]
-            self.datastore[f'hv_ch{i}']['pos_term_I'] = hv_results[i]["pos_term_I"]
-            self.datastore[f'hv_ch{i}']['pos_term_R'] = hv_results[i]["pos_term_R"]
-            self.datastore[f'hv_ch{i}']['neg_open_V'] = hv_results[i]["neg_open_V"]
-            self.datastore[f'hv_ch{i}']['neg_open_I'] = hv_results[i]["neg_open_I"]
-            self.datastore[f'hv_ch{i}']['neg_open_R'] = hv_results[i]["neg_open_R"]
-            self.datastore[f'hv_ch{i}']['neg_term_V'] = hv_results[i]["neg_term_V"]
-            self.datastore[f'hv_ch{i}']['neg_term_I'] = hv_results[i]["neg_term_I"]
-            self.datastore[f'hv_ch{i}']['neg_term_R'] = hv_results[i]["neg_term_R"]
+            for j in ["pos_open_V", "pos_open_I", "pos_open_R", "pos_term_V", "pos_term_I", "pos_term_R", "neg_open_V", "neg_open_I", "neg_open_R", "neg_term_V", "neg_term_I", "neg_term_R"]:
+                self.datastore[f'hv_ch{i}'][j] = hv_results[i][j]
 
         self.r1.power("OFF", "hvpullup")
 
