@@ -36,7 +36,7 @@ class LDOmeasure:
         else:
             self.test_name = input("Input the test name:\n")
 
-        self.rounding_factor = int(self.json_data["rounding_factor"])
+        self.rounding_factor = self.json_data["rounding_factor"]
         self.datastore = {}
         self.datastore['input_params'] = self.json_data
         self.datastore['test_name'] = self.test_name
@@ -128,8 +128,8 @@ class LDOmeasure:
         self.k.initialize_fan()
         self.r0.power("ON", "fan")
         self.r1.power("ON", "fanread")
-        print(f"{self.prefix} --> Fans turned on, waiting {float(self.json_data['fan_wait'])} seconds for the fans to reach steady state...")
-        time.sleep(float(self.json_data['fan_wait']))
+        print(f"{self.prefix} --> Fans turned on, waiting {self.json_data['fan_wait']} seconds for the fans to reach steady state...")
+        time.sleep(self.json_data['fan_wait'])
         fan_voltage = self.r0.get_voltage("fan")
         fan_current = self.r0.get_current("fan")
         fanread_voltage = self.r1.get_voltage("fanread")
@@ -143,7 +143,7 @@ class LDOmeasure:
         print(f"{self.prefix} --> Fan read pullup supply was {fanread_voltage}V and {fanread_current}A")
 
         fan_test = True
-        if ((fan_voltage < float(self.json_data["fan_voltage_max"])) and (fan_voltage > float(self.json_data["fan_voltage_min"]))):
+        if ((fan_voltage < self.json_data["fan_voltage_max"]) and (fan_voltage > self.json_data["fan_voltage_min"])):
             self.ws.cell(row=self.row, column=4, value=fan_voltage)
             self.datastore['Tests'] = {'fan_voltage_test' : "Pass"}
         else:
@@ -151,7 +151,7 @@ class LDOmeasure:
             self.datastore['Tests']['fan_voltage_test'] = "Fail"
             fan_test = False
 
-        if ((fan_current < float(self.json_data["fan_current_max"])) and (fan_current > float(self.json_data["fan_current_min"]))):
+        if ((fan_current < self.json_data["fan_current_max"]) and (fan_current > self.json_data["fan_current_min"])):
             self.ws.cell(row=self.row, column=5, value=fan_current)
             self.datastore['Tests']['fan_current_test'] = "Pass"
         else:
@@ -160,7 +160,7 @@ class LDOmeasure:
             fan_test = False
 
         for i in range(1,5):
-            if ((fan_read_signal[i] < float(self.json_data["fan_read_max"])) and (fan_read_signal[i] > float(self.json_data["fan_read_min"]))):
+            if ((fan_read_signal[i] < self.json_data["fan_read_max"]) and (fan_read_signal[i] > self.json_data["fan_read_min"])):
                 self.ws.cell(row=self.row, column=5+i, value=round(fan_read_signal[i], self.rounding_factor))
                 self.datastore['Tests'][f'fan_signal_test_{i}'] = "Pass"
             else:
@@ -182,7 +182,7 @@ class LDOmeasure:
 
         heat_test = True
         for i in range(1,5):
-            if ((heater_resistance[i] < float(self.json_data["heating_element_max"])) and (heater_resistance[i] > float(self.json_data["heating_element_min"]))):
+            if ((heater_resistance[i] < self.json_data["heating_element_max"]) and (heater_resistance[i] > self.json_data["heating_element_min"])):
                 self.ws.cell(row=self.row, column=9+i, value=round(heater_resistance[i], self.rounding_factor))
                 self.datastore['Tests'][f'heating_element_test_{i}'] = "Pass"
             else:
@@ -198,7 +198,7 @@ class LDOmeasure:
         self.r0.power("ON", "heat_supply")
         self.r0.power("ON", "heat_switch")
         print(f"{self.prefix} --> Heat turned on, waiting {self.json_data['heat_wait']} seconds for the sensors to heat up...")
-        time.sleep(float(self.json_data['heat_wait']))
+        time.sleep(self.json_data['heat_wait'])
         supply_voltage = self.r0.get_voltage("heat_supply")
         supply_current = self.r0.get_current("heat_supply")
         switch_voltage = self.r0.get_voltage("heat_switch")
@@ -216,10 +216,10 @@ class LDOmeasure:
         print(f"{self.prefix} --> Heat power supply was {supply_voltage}V and {supply_current}A")
         print(f"{self.prefix} --> Heat power switch was {switch_voltage}V and {switch_current}A")
         print(f"{self.prefix} --> Original temperatures were {temp1}")
-        print(f"{self.prefix} --> Temperatures after {float(self.json_data['heat_wait'])} seconds were {temp2}, a rise of {temp_rise}")
+        print(f"{self.prefix} --> Temperatures after {self.json_data['heat_wait']} seconds were {temp2}, a rise of {temp_rise}")
 
         for i in range(4):
-            if ((temp_rise[0] < float(self.json_data["temp_increase_max"])) and (temp_rise[0] > float(self.json_data["temp_increase_min"]))):
+            if ((temp_rise[0] < self.json_data["temp_increase_max"]) and (temp_rise[0] > self.json_data["temp_increase_min"])):
                 self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[0], self.rounding_factor))
                 self.datastore['Tests'][f'temperature_rise_test_{i}'] = "Pass"
             else:
@@ -245,40 +245,40 @@ class LDOmeasure:
             #Do the positive voltage with open termination
             self.k.set_relay(0 << i, 0)
             self.c.turn_on(i)
-            print(f"{self.prefix} --> HV reached max value, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
-            time.sleep(float(self.json_data['hv_stability_wait']))
+            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_stability_wait'])
             hv_results[i] = {"pos_open_V" : self.c.get_voltage(i)}
             hv_results[i]["pos_open_I"] = self.c.get_current(i)
 
             #Turn on 10k termination
             self.k.set_relay(0 << i, 1 << i)
-            print(f"{self.prefix} --> HV termination switched, waiting {float(self.json_data['hv_termination_wait'])} seconds...")
-            time.sleep(float(self.json_data['hv_termination_wait']))
+            print(f"{self.prefix} --> HV termination switched, waiting {self.json_data['hv_termination_wait']} seconds...")
+            time.sleep(self.json_data['hv_termination_wait'])
 
             hv_results[i]["pos_term_V"] = self.c.get_voltage(i)
             hv_results[i]["pos_term_I"] = self.c.get_current(i)
             self.c.turn_off(i)
-            print(f"{self.prefix} --> HV turned off, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
-            time.sleep(float(self.json_data['hv_stability_wait']))
+            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_stability_wait'])
 
             #Turn on negative voltage
             self.k.set_relay(1 << i, 0)
             self.c.turn_on(i+8)
-            print(f"{self.prefix} --> HV reached max value, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
-            time.sleep(float(self.json_data['hv_stability_wait']))
+            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_stability_wait'])
             hv_results[i]["neg_open_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_open_I"] = self.c.get_current(i+8)
 
             #Turn on 10k termination
             self.k.set_relay(1 << i, 1 << i)
-            print(f"{self.prefix} --> HV termination switched, waiting {float(self.json_data['hv_termination_wait'])} seconds...")
-            time.sleep(float(self.json_data['hv_termination_wait']))
+            print(f"{self.prefix} --> HV termination switched, waiting {self.json_data['hv_termination_wait']} seconds...")
+            time.sleep(self.json_data['hv_termination_wait'])
 
             hv_results[i]["neg_term_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_term_I"] = self.c.get_current(i+8)
             self.c.turn_off(i+8)
-            print(f"{self.prefix} --> HV turned off, waiting {float(self.json_data['hv_stability_wait'])} seconds to stabilize...")
-            time.sleep(float(self.json_data['hv_stability_wait']))
+            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_stability_wait'])
 
             print(f"{self.prefix} --> Channel {i} HV results are {hv_results[i]}")
 
@@ -300,7 +300,7 @@ class LDOmeasure:
                 hv_results[i]["neg_term_R"] = 0
 
             for num,j in enumerate(["pos_open_R", "pos_term_R", "neg_open_R", "neg_term_R"]):
-                if ((float(hv_results[i][j]) < float(self.json_data["hv_resistance_max"])) and (float(hv_results[i][j]) > float(self.json_data["hv_resistance_min"]))):
+                if ((float(hv_results[i][j]) < self.json_data["hv_resistance_max"]) and (float(hv_results[i][j]) > self.json_data["hv_resistance_min"])):
                     self.ws.cell(row=self.row, column=18+(i*4)+num, value=round(float(hv_results[i][j]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:

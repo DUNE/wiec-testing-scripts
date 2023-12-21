@@ -23,9 +23,9 @@ class Keysight970A:
         self.rtd_ch_list = ""
         self.rtd_convert = {}
         rtd_slot = self.json_data['keysight970a_901A_slot']
-        self.num_rtds = int(self.json_data['keysight970a_rtd_num'])
+        self.num_rtds = self.json_data['keysight970a_rtd_num']
         for i in range(1,self.num_rtds+1,1):
-            ch_num = int(self.json_data[f'keysight970a_rtd_ch{i}'])
+            ch_num = self.json_data[f'keysight970a_rtd_ch{i}']
             ch_string = f"{rtd_slot}{ch_num:02d}"
             self.rtd_convert[f"{ch_string}"] = i
             if (i == 1):
@@ -37,9 +37,9 @@ class Keysight970A:
         self.heater_ch_list = ""
         self.heater_convert = {}
         heater_slot = self.json_data['keysight970a_901A_slot']
-        self.num_heaters = int(self.json_data['keysight970a_heater_num'])
+        self.num_heaters = self.json_data['keysight970a_heater_num']
         for i in range(1,self.num_heaters+1,1):
-            ch_num = int(self.json_data[f'keysight970a_heater_ch{i}'])
+            ch_num = self.json_data[f'keysight970a_heater_ch{i}']
             ch_string = f"{heater_slot}{ch_num:02d}"
             self.heater_convert[f"{ch_string}"] = i
             if (i == 1):
@@ -47,16 +47,16 @@ class Keysight970A:
             else:
                 self.heater_ch_list += (f",{ch_string}")
 
-        supply_string = f"{heater_slot}{int(self.json_data[f'keysight970a_heater_supply']):02d}"
+        supply_string = f"{heater_slot}{self.json_data[f'keysight970a_heater_supply']:02d}"
         self.heater_ch_list_power = self.heater_ch_list + (f",{supply_string}")
 
         #Build the string of the list of fan channels
         self.fan_ch_list = ""
         self.fan_convert = {}
         fan_slot = self.json_data['keysight970a_901A_slot']
-        self.num_fans = int(self.json_data['keysight970a_fan_num'])
+        self.num_fans = self.json_data['keysight970a_fan_num']
         for i in range(1,self.num_fans+1,1):
-            ch_num = int(self.json_data[f'keysight970a_fan_ch{i}'])
+            ch_num = self.json_data[f'keysight970a_fan_ch{i}']
             ch_string = f"{fan_slot}{ch_num:02d}"
             self.fan_convert[f"{ch_string}"] = i
             if (i == 1):
@@ -126,7 +126,7 @@ class Keysight970A:
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
         #Get rid of /n at the end of the string
-        resp = self.keysight.query("READ?", delay = int(self.json_data['keysight970a_rtd_delay'])).strip()
+        resp = self.keysight.query("READ?", delay = self.json_data['keysight970a_rtd_delay']).strip()
         #Split commas into lists
         sep = resp.split(",")
         #Make a dictionary with the channel as the key and the float reading as value
@@ -143,7 +143,7 @@ class Keysight970A:
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
         #Get rid of /n at the end of the string
-        resp = self.keysight.query("READ?", delay = int(self.json_data['keysight970a_heater_delay'])).strip()
+        resp = self.keysight.query("READ?", delay = self.json_data['keysight970a_heater_delay']).strip()
         #Split commas into lists
         sep = resp.split(",")
         #Make a dictionary with the channel as the key and the float reading as value
@@ -160,7 +160,7 @@ class Keysight970A:
         #Response is something like
         #['+9.90000000E+2', '101', '+9.90000000E+2', '102', '+9.90000000E+1', '103', '+9.90000000E+0', '104\n']
         #Get rid of /n at the end of the string
-        resp = self.keysight.query("READ?", delay = int(self.json_data['keysight970a_fan_delay'])).strip()
+        resp = self.keysight.query("READ?", delay = self.json_data['keysight970a_fan_delay']).strip()
         #Split commas into lists
         sep = resp.split(",")
         #Make a dictionary with the channel as the key and the float reading as value

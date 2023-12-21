@@ -24,13 +24,13 @@ class CAENR8033DM_WRAPPER:
             sys.exit(f"{self.prefix} --> Board failed with error {hex(self.get_board_status())}")
 
         channels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-        self.set_current_range(channels, int(self.json_data['caenR8033DM_current_range']))
-        self.set_overcurrent(channels, float(self.json_data['caenR8033DM_overcurrent']))
-        self.set_powerdown(channels, int(self.json_data['caenR8033DM_power_down_mode']))
-        self.set_rampdown(channels, float(self.json_data['caenR8033DM_ramp_down']))
-        self.set_rampup(channels, float(self.json_data['caenR8033DM_ramp_up']))
-        self.set_trip_time(channels, float(self.json_data['caenR8033DM_trip_time']))
-        self.set_HV_value(channels, float(self.json_data['caenR8033DM_voltage']))
+        self.set_current_range(channels, self.json_data['caenR8033DM_current_range'])
+        self.set_overcurrent(channels, self.json_data['caenR8033DM_overcurrent'])
+        self.set_powerdown(channels, self.json_data['caenR8033DM_power_down_mode'])
+        self.set_rampdown(channels, self.json_data['caenR8033DM_ramp_down'])
+        self.set_rampup(channels, self.json_data['caenR8033DM_ramp_up'])
+        self.set_trip_time(channels, self.json_data['caenR8033DM_trip_time'])
+        self.set_HV_value(channels, self.json_data['caenR8033DM_voltage'])
 
         # print(self.get_channel_status(3))
         # print(self.get_channel_status([3,4,5,6, 7]))
