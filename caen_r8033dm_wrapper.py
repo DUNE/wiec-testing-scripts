@@ -9,7 +9,7 @@ class CAENR8033DM_WRAPPER:
         self.json_data = json_data
         self.caen = CAENR8033DM(json_data)      #Creates instance of lower level which holds the connection
         self.rounding_factor = 2                #When comparing floats, we need to round
-        self.ramp_wait = 1                      #Time between checks when ramping up or down
+        self.ramp_wait = 1.5                      #Time between checks when ramping up or down
         if (self.caen.caen.value == -1):
             sys.exit(f"{self.prefix} --> Device could not be intialized, returned {self.caen.caen.value}")
 
