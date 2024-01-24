@@ -110,7 +110,7 @@ class LDOmeasure:
                 print(f"measure at {time.time()}")
                 prev_measurement = prev_measurement + self.seconds_interval
                 datum = [datetime.now()]
-                for i in range(8):
+                for i in range(16):
                     datum.append(self.c.get_voltage(i))
                     datum.append(self.c.get_current(i))
                 data.append(datum)
