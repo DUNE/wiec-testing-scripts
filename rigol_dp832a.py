@@ -47,6 +47,13 @@ class RigolDP832A:
         self.rigol.write(f"SOURce{self.json_data['rigol832a_hvpullup_ch'] - (self.channel_num * self.index)}:CURRent:PROTection:STATe {self.json_data['rigol832a_hvpullup_overcurrent_en']}")
         self.channels.append("hvpullup")
 
+    def setup_hvpullup2(self):
+        self.rigol.write(f"SOURce{self.json_data['rigol832a_hvpullup2_ch'] - (self.channel_num * self.index)}:VOLTage:LEVel:IMMediate:AMPLitude {self.json_data['rigol832a_hvpullup2_voltage']}")
+        self.rigol.write(f"SOURce{self.json_data['rigol832a_hvpullup2_ch'] - (self.channel_num * self.index)}:CURRent:LEVel:IMMediate:AMPLitude {self.json_data['rigol832a_hvpullup2_current']}")
+        self.rigol.write(f"SOURce{self.json_data['rigol832a_hvpullup2_ch'] - (self.channel_num * self.index)}:CURRent:PROTection:LEVel {self.json_data['rigol832a_hvpullup2_overcurrent']}")
+        self.rigol.write(f"SOURce{self.json_data['rigol832a_hvpullup2_ch'] - (self.channel_num * self.index)}:CURRent:PROTection:STATe {self.json_data['rigol832a_hvpullup2_overcurrent_en']}")
+        self.channels.append("hvpullup2")
+
     def setup_fanread(self):
         self.rigol.write(f"SOURce{self.json_data['rigol832a_fanread_ch'] - (self.channel_num * self.index)}:VOLTage:LEVel:IMMediate:AMPLitude {self.json_data['rigol832a_fanread_voltage']}")
         self.rigol.write(f"SOURce{self.json_data['rigol832a_fanread_ch'] - (self.channel_num * self.index)}:CURRent:LEVel:IMMediate:AMPLitude {self.json_data['rigol832a_fanread_current']}")
@@ -64,6 +71,8 @@ class RigolDP832A:
             return self.json_data['rigol832a_heater_switch_ch'] - (self.channel_num * self.index)
         elif (ch == "hvpullup" and "hvpullup" in self.channels):
             return self.json_data['rigol832a_hvpullup_ch'] - (self.channel_num * self.index)
+        elif (ch == "hvpullup2" and "hvpullup2" in self.channels):
+            return self.json_data['rigol832a_hvpullup2_ch'] - (self.channel_num * self.index)
         elif (ch == "fanread" and "fanread" in self.channels):
             return self.json_data['rigol832a_fanread_ch'] - (self.channel_num * self.index)
         else:

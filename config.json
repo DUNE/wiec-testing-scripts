@@ -9,14 +9,14 @@
 "hv_stability_wait": 2.0,
 "hv_termination_wait": 2.0,
 "heat_wait": 10.0,
-"fan_wait": 10.0,
+"fan_wait": 5.0,
 
 "fan_voltage_max": 24.5,
 "fan_voltage_min": 23.5,
-"fan_current_max": 0.65,
-"fan_current_min": 0.45,
+"fan_current_max": 1.25,
+"fan_current_min": 0.85,
 "fan_read_max": 2.5,
-"fan_read_min": 1.5,
+"fan_read_min": 1.1,
 
 "heating_element_max": 20.0,
 "heating_element_min": 14.0,
@@ -79,8 +79,8 @@
 
 "rigol832a_fan_ch": 1,
 "rigol832a_fan_voltage": 24.0,
-"rigol832a_fan_current": 0.8,
-"rigol832a_fan_overcurrent": 1.0,
+"rigol832a_fan_current": 1.2,
+"rigol832a_fan_overcurrent": 1.4,
 "rigol832a_fan_overcurrent_en": "ON",
 
 "rigol832a_heater_supply_ch": 2,
@@ -100,6 +100,12 @@
 "rigol832a_hvpullup_current": 3.0,
 "rigol832a_hvpullup_overcurrent": 3.1,
 "rigol832a_hvpullup_overcurrent_en": "ON",
+
+"rigol832a_hvpullup2_ch": 5,
+"rigol832a_hvpullup2_voltage": 20.0,
+"rigol832a_hvpullup2_current": 3.0,
+"rigol832a_hvpullup2_overcurrent": 3.1,
+"rigol832a_hvpullup2_overcurrent_en": "ON",
 
 "rigol832a_fanread_ch": 6,
 "rigol832a_fanread_voltage": 5.0,

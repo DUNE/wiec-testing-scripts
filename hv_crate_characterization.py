@@ -41,8 +41,8 @@ class LDOmeasure:
         self.sequence()
 
     def sequence(self):
-        input("Ready for single channel test?")
-        self.c.turn_on(0)
+        input("Ready for all channel connected and positive test?")
+        self.c.turn_on([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
         data = []
         cycle_start_time = time.time()
         prev_measurement = cycle_start_time - 1
@@ -51,14 +51,34 @@ class LDOmeasure:
                 print(f"measure at {time.time()}")
                 prev_measurement = prev_measurement + self.seconds_interval
                 datum = [datetime.now()]
-                datum.append(self.c.get_voltage(0))
-                datum.append(self.c.get_current(0))
+                for i in range(16):
+                    datum.append(self.c.get_voltage(i))
+                    datum.append(self.c.get_current(i))
                 data.append(datum)
-        with open(f"{self.test_name}_single.txt", 'w') as fp:
+        with open(f"{self.test_name}_multiple_plugged_positive.csv", 'w') as fp:
             csv_writer = csv.writer(fp, delimiter=',')
             csv_writer.writerows(data)
 
-        self.c.turn_off(0)
+        self.c.turn_off([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
+
+        # input("Ready for single channel test?")
+        # self.c.turn_on(0)
+        # data = []
+        # cycle_start_time = time.time()
+        # prev_measurement = cycle_start_time - 1
+        # while (time.time() - cycle_start_time < (self.minutes_duration * 60)):
+        #     if (time.time() > prev_measurement + self.seconds_interval):
+        #         print(f"measure at {time.time()}")
+        #         prev_measurement = prev_measurement + self.seconds_interval
+        #         datum = [datetime.now()]
+        #         datum.append(self.c.get_voltage(0))
+        #         datum.append(self.c.get_current(0))
+        #         data.append(datum)
+        # with open(f"{self.test_name}_single.csv", 'w') as fp:
+        #     csv_writer = csv.writer(fp, delimiter=',')
+        #     csv_writer.writerows(data)
+        #
+        # self.c.turn_off(0)
 
         input("Ready for all channel connected test?")
         self.c.turn_on(0)
@@ -74,7 +94,7 @@ class LDOmeasure:
                     datum.append(self.c.get_voltage(i))
                     datum.append(self.c.get_current(i))
                 data.append(datum)
-        with open(f"{self.test_name}_multiple_plugged.txt", 'w') as fp:
+        with open(f"{self.test_name}unplugged_all.csv", 'w') as fp:
             csv_writer = csv.writer(fp, delimiter=',')
             csv_writer.writerows(data)
 
@@ -94,7 +114,7 @@ class LDOmeasure:
                     datum.append(self.c.get_voltage(i))
                     datum.append(self.c.get_current(i))
                 data.append(datum)
-        with open(f"{self.test_name}_multiple_plugged_positive.txt", 'w') as fp:
+        with open(f"{self.test_name}_multiple_plugged_positive.csv", 'w') as fp:
             csv_writer = csv.writer(fp, delimiter=',')
             csv_writer.writerows(data)
 
@@ -110,11 +130,11 @@ class LDOmeasure:
                 print(f"measure at {time.time()}")
                 prev_measurement = prev_measurement + self.seconds_interval
                 datum = [datetime.now()]
-                for i in range(8):
+                for i in range(16):
                     datum.append(self.c.get_voltage(i))
                     datum.append(self.c.get_current(i))
                 data.append(datum)
-        with open(f"{self.test_name}_multiple_plugged_negative.txt", 'w') as fp:
+        with open(f"{self.test_name}_multiple_plugged_negative.csv", 'w') as fp:
             csv_writer = csv.writer(fp, delimiter=',')
             csv_writer.writerows(data)
 

@@ -30,6 +30,7 @@ class LDOmeasure:
 
         self.r1 = RigolDP832A(self.rm, self.json_data, 1)
         self.r1.setup_hvpullup()
+        self.r1.setup_hvpullup2()
         self.r1.setup_fanread()
 
         #Now we can get the input for the name of the test
@@ -150,7 +151,7 @@ class LDOmeasure:
             self.datastore['Tests'] = {'fan_voltage_test' : "Pass"}
         else:
             self.ws.cell(row=self.row, column=4, value=fan_voltage).style = "fail"
-            self.datastore['Tests']['fan_voltage_test'] = "Fail"
+            self.datastore['Tests'] = {'fan_voltage_test' : "Fail"}
             fan_test = False
 
         if ((fan_current < self.json_data["fan_current_max"]) and (fan_current > self.json_data["fan_current_min"])):
@@ -220,11 +221,11 @@ class LDOmeasure:
         print(f"{self.prefix} --> Temperatures after {self.json_data['heat_wait']} seconds were {temp2}, a rise of {temp_rise}")
 
         for i in range(4):
-            if ((temp_rise[0] < self.json_data["temp_increase_max"]) and (temp_rise[0] > self.json_data["temp_increase_min"])):
-                self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[0], self.rounding_factor))
+            if ((temp_rise[i] < self.json_data["temp_increase_max"]) and (temp_rise[i] > self.json_data["temp_increase_min"])):
+                self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[i], self.rounding_factor))
                 self.datastore['Tests'][f'temperature_rise_test_{i}'] = "Pass"
             else:
-                self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[0], self.rounding_factor)).style = "fail"
+                self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[i], self.rounding_factor)).style = "fail"
                 self.datastore['Tests'][f'temperature_rise_test_{i}'] = "Fail"
                 heat_test = False
 
@@ -236,11 +237,11 @@ class LDOmeasure:
         self.datastore['temp1'] = temp1
         self.datastore['temp2'] = temp2
         self.datastore['temp_rise'] = temp_rise
-
-        #HV Leakage Test
-        #Turn on HV
+        HV Leakage Test
+        Turn on HV
         hv_results = {}
         self.r1.power("ON", "hvpullup")
+        self.r1.power("ON", "hvpullup2")
         hv_test = True
         for i in range(8):
             #Do the positive voltage with open termination
