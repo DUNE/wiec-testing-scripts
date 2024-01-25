@@ -9,6 +9,12 @@ from keysight_daq970a import Keysight970A
 from rigol_dp832a import RigolDP832A
 from caen_r8033dm_wrapper import CAENR8033DM_WRAPPER
 
+import matplotlib.dates as mdates
+import matplotlib.ticker as mticker
+from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+
 class LDOmeasure:
     def __init__(self, config_file, name = None):
         self.prefix = "DUNE HV Crate Tester"
@@ -48,7 +54,33 @@ class LDOmeasure:
         self.start_time = datetime.now()
         self.datastore['start_time'] = self.start_time
         self.initialize_spreadsheet()
-        self.sequence()
+
+        self.fan_test_result = False
+        self.heat_test_result = False
+        self.hv_test_result = False
+
+        self.fan_test()
+        self.heater_test()
+        self.hv_test()
+
+        if (self.fan_test_result and self.heat_test_result and self.hv_test_result):
+            self.ws.cell(row=self.row, column=1, value=self.test_name)
+            self.datastore['overall'] = "Pass"
+        else:
+            self.ws.cell(row=self.row, column=1, value=self.test_name).style = "fail"
+            self.datastore['overall'] = "Fail"
+        self.wb.save(self.path_to_spreadsheet)
+
+        end_time = datetime.now()
+        test_time = end_time - self.start_time
+        self.datastore['end_time'] = end_time
+        self.datastore['test_time'] = test_time
+
+        with open(self.json_output_file, 'w', encoding='utf-8') as f:
+            json.dump(self.datastore, f, ensure_ascii=False, indent=4, default=str)
+
+        print(f"{self.prefix} --> Test complete")
+        self.make_hv_plots()
 
     #Looks to see if a main spreadsheet of all results exists. If it does, open it and find the next row to write these results to
     #If not, it creates the spreadsheet with the proper headers and formatting
@@ -64,7 +96,8 @@ class LDOmeasure:
 
         json_date = datetime.today().strftime('%Y%m%d%H%M%S')
         os.makedirs(os.path.join(output_path, json_date))
-        self.json_output_file = os.path.join(output_path, json_date, f"{json_date}_{self.test_name}.json")
+        self.results_path = os.path.join(output_path, json_date)
+        self.json_output_file = os.path.join(self.results_path, f"{json_date}_{self.test_name}.json")
         self.datastore['json_path'] = self.json_output_file
 
         if (os.path.isfile(self.path_to_spreadsheet)):
@@ -126,7 +159,7 @@ class LDOmeasure:
         self.ws.cell(row=self.row, column=3, value=datetime.today().strftime('%I:%M:%S %p'))
         self.wb.save(self.path_to_spreadsheet)
 
-    def sequence(self):
+    def fan_test(self):
         #Fan test
         self.k.initialize_fan()
         self.r0.power("ON", "fan")
@@ -145,14 +178,14 @@ class LDOmeasure:
         print(f"{self.prefix} --> Read signal for each fan was {fan_read_signal}")
         print(f"{self.prefix} --> Fan read pullup supply was {fanread_voltage}V and {fanread_current}A")
 
-        fan_test = True
+        self.fan_test_result = True
         if ((fan_voltage < self.json_data["fan_voltage_max"]) and (fan_voltage > self.json_data["fan_voltage_min"])):
             self.ws.cell(row=self.row, column=4, value=fan_voltage)
             self.datastore['Tests'] = {'fan_voltage_test' : "Pass"}
         else:
             self.ws.cell(row=self.row, column=4, value=fan_voltage).style = "fail"
             self.datastore['Tests'] = {'fan_voltage_test' : "Fail"}
-            fan_test = False
+            self.fan_test_result = False
 
         if ((fan_current < self.json_data["fan_current_max"]) and (fan_current > self.json_data["fan_current_min"])):
             self.ws.cell(row=self.row, column=5, value=fan_current)
@@ -160,7 +193,7 @@ class LDOmeasure:
         else:
             self.ws.cell(row=self.row, column=5, value=fan_current).style = "fail"
             self.datastore['Tests']['fan_current_test'] = "Fail"
-            fan_test = False
+            self.fan_test_result = False
 
         for i in range(1,5):
             if ((fan_read_signal[i] < self.json_data["fan_read_max"]) and (fan_read_signal[i] > self.json_data["fan_read_min"])):
@@ -168,7 +201,7 @@ class LDOmeasure:
                 self.datastore['Tests'][f'fan_signal_test_{i}'] = "Pass"
             else:
                 self.ws.cell(row=self.row, column=5+i, value=round(fan_read_signal[i], self.rounding_factor)).style = "fail"
-                fan_test = False
+                self.fan_test_result = False
 
         self.datastore['fan_voltage'] = fan_voltage
         self.datastore['fan_current'] = fan_current
@@ -176,13 +209,14 @@ class LDOmeasure:
         self.datastore['fanread_current'] = fanread_current
         self.datastore['fan_read_signal'] = fan_read_signal
 
+    def heater_test(self):
         #Heater test
         #First measure resistance of heating element with no power connected
         self.k.initialize_resistance()
         heater_resistance = self.k.measure_resistance()
         print(f"{self.prefix} --> Heating element resistances are {fan_read_signal}")
 
-        heat_test = True
+        self.heat_test_result = True
         for i in range(1,5):
             if ((heater_resistance[i] < self.json_data["heating_element_max"]) and (heater_resistance[i] > self.json_data["heating_element_min"])):
                 self.ws.cell(row=self.row, column=9+i, value=round(heater_resistance[i], self.rounding_factor))
@@ -190,7 +224,7 @@ class LDOmeasure:
             else:
                 self.ws.cell(row=self.row, column=9+i, value=round(heater_resistance[i], self.rounding_factor)).style = "fail"
                 self.datastore['Tests'][f'heating_element_test_{i}'] = "Fail"
-                heat_test = False
+                self.heat_test_result = False
 
         self.datastore['heater_resistance'] = heater_resistance
 
@@ -227,7 +261,7 @@ class LDOmeasure:
             else:
                 self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[i], self.rounding_factor)).style = "fail"
                 self.datastore['Tests'][f'temperature_rise_test_{i}'] = "Fail"
-                heat_test = False
+                self.heat_test_result = False
 
         self.datastore['heater_supply_voltage'] = supply_voltage
         self.datastore['heater_supply_current'] = supply_current
@@ -237,33 +271,54 @@ class LDOmeasure:
         self.datastore['temp1'] = temp1
         self.datastore['temp2'] = temp2
         self.datastore['temp_rise'] = temp_rise
-        HV Leakage Test
-        Turn on HV
+
+    def hv_test(self):
+        #HV Leakage Test
         hv_results = {}
         self.r1.power("ON", "hvpullup")
         self.r1.power("ON", "hvpullup2")
-        hv_test = True
-        for i in range(8):
-            #Do the positive voltage with open termination
-            self.k.set_relay(0 << i, 0)
+        self.hv_test_result = True
+        for i in range(1):
+            #Measure the ramp from 0 to positive voltage with open termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {self.json_data['caenR8033DM_voltage']}V with open termination")
+            self.k.set_relay(0, 0)
             self.c.turn_on(i)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
             hv_results[i] = {"pos_open_V" : self.c.get_voltage(i)}
             hv_results[i]["pos_open_I"] = self.c.get_current(i)
 
-            #Turn on 10k termination
-            self.k.set_relay(0 << i, 1 << i)
-            print(f"{self.prefix} --> HV termination switched, waiting {self.json_data['hv_termination_wait']} seconds...")
-            time.sleep(self.json_data['hv_termination_wait'])
+            self.record_hv_data(f"{self.test_name}_ch{i}_pos_open_on.csv")
 
-            hv_results[i]["pos_term_V"] = self.c.get_voltage(i)
-            hv_results[i]["pos_term_I"] = self.c.get_current(i)
+            #Measure the ramp from positive voltage to 0 with open termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from {self.json_data['caenR8033DM_voltage']}V to 0 with open termination")
             self.c.turn_off(i)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #Turn on negative voltage
+            self.record_hv_data(f"{self.test_name}_ch{i}_pos_open_off.csv")
+
+            #Measure the ramp from 0 to positive voltage with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {self.json_data['caenR8033DM_voltage']}V with 10k termination")
+            self.k.set_relay(0, 1 << i)
+            self.c.turn_on(i)
+            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_termination_wait'])
+            hv_results[i]["pos_term_V"] = self.c.get_voltage(i)
+            hv_results[i]["pos_term_I"] = self.c.get_current(i)
+
+            self.record_hv_data(f"{self.test_name}_ch{i}_pos_10k_on.csv")
+
+            #Measure the ramp from positive voltage to 0 with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from {self.json_data['caenR8033DM_voltage']}V to 0 with 10k termination")
+            self.c.turn_off(i)
+            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_stability_wait'])
+
+            self.record_hv_data(f"{self.test_name}_ch{i}_pos_10k_off.csv")
+
+            #Measure the ramp from 0 to negative voltage with open termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with open termination")
             self.k.set_relay(1 << i, 0)
             self.c.turn_on(i+8)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
@@ -271,16 +326,35 @@ class LDOmeasure:
             hv_results[i]["neg_open_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_open_I"] = self.c.get_current(i+8)
 
-            #Turn on 10k termination
+            self.record_hv_data(f"{self.test_name}_ch{i}_neg_open_on.csv")
+
+            #Measure the ramp from negative voltage to 0 with open termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from -{self.json_data['caenR8033DM_voltage']}V to 0 with open termination")
+            self.c.turn_off(i+8)
+            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            time.sleep(self.json_data['hv_stability_wait'])
+
+            self.record_hv_data(f"{self.test_name}_ch{i}_neg_open_off.csv")
+
+            #Measure the ramp from 0 to negative voltage with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with 10k termination")
             self.k.set_relay(1 << i, 1 << i)
-            print(f"{self.prefix} --> HV termination switched, waiting {self.json_data['hv_termination_wait']} seconds...")
+            self.c.turn_on(i+8)
+            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])
 
             hv_results[i]["neg_term_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_term_I"] = self.c.get_current(i+8)
+
+            self.record_hv_data(f"{self.test_name}_ch{i}_neg_10k_on.csv")
+
+            #Measure the ramp from 0 to negative voltage with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from -{self.json_data['caenR8033DM_voltage']}V to 0 with 10k termination")
             self.c.turn_off(i+8)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
+
+            self.record_hv_data(f"{self.test_name}_ch{i}_neg_10k_off.csv")
 
             try:
                 hv_results[i]["pos_open_R"] = float(hv_results[i]["pos_open_V"])/float(hv_results[i]["pos_open_I"])
@@ -308,7 +382,7 @@ class LDOmeasure:
                 else:
                     self.ws.cell(row=self.row, column=18+(i*4)+num, value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
-                    hv_test = False
+                    self.hv_test_result = False
 
             self.ws.cell(row=self.row, column=12+(i*4), value=round(float(hv_results[i]["pos_open_R"]), self.rounding_factor))
             self.ws.cell(row=self.row, column=13+(i*4), value=round(float(hv_results[i]["pos_term_R"]), self.rounding_factor))
@@ -319,25 +393,91 @@ class LDOmeasure:
             for j in ["pos_open_V", "pos_open_I", "pos_open_R", "pos_term_V", "pos_term_I", "pos_term_R", "neg_open_V", "neg_open_I", "neg_open_R", "neg_term_V", "neg_term_I", "neg_term_R"]:
                 self.datastore[f'hv_ch{i}'][j] = hv_results[i][j]
 
-        self.r1.power("OFF", "hvpullup")
+        self.r1.power("OFF", "hvpullup1")
+        self.r1.power("OFF", "hvpullup2")
 
-        if (fan_test and heat_test and hv_test):
-            self.ws.cell(row=self.row, column=1, value=self.test_name)
-            self.datastore['overall'] = "Pass"
-        else:
-            self.ws.cell(row=self.row, column=1, value=self.test_name).style = "fail"
-            self.datastore['overall'] = "Fail"
-        self.wb.save(self.path_to_spreadsheet)
+    def record_hv_data(self, name):
+        data = []
+            cycle_start_time = time.time()
+            prev_measurement = cycle_start_time - 1
+            while (time.time() - cycle_start_time < (self.json_data['hv_minutes_duration'] * 60)):
+                if (time.time() > prev_measurement + self.json_data['hv_seconds_interval']):
+                    print(f"{self.prefix} --> Measurement taken at {time.time()}")
+                    prev_measurement = prev_measurement + self.seconds_interval
+                    datum = [datetime.now()]
+                    for i in range(16):
+                        datum.append(self.c.get_voltage(i))
+                        datum.append(self.c.get_current(i))
+                    data.append(datum)
+            with open(os.path.join(self.results_path, name), 'w') as fp:
+                csv_writer = csv.writer(fp, delimiter=',')
+                csv_writer.writerows(data)
 
-        end_time = datetime.now()
-        test_time = end_time - self.start_time
-        self.datastore['end_time'] = end_time
-        self.datastore['test_time'] = test_time
+    def make_hv_plots(self):
+        self.make_plot(f"{self.test_name}_ch0_pos_open_on", "0 to 2kV, open termination", True, True)
+        self.make_plot(f"{self.test_name}_ch0_pos_open_off", "2kV to 0, open termination", False, True)
+        self.make_plot(f"{self.test_name}_ch0_pos_10k_on", "0 to 2kV, 10k termination", True, True)
+        self.make_plot(f"{self.test_name}_ch0_pos_10k_off", "2kV to 0, 10k termination", False, True)
 
-        with open(self.json_output_file, 'w', encoding='utf-8') as f:
-            json.dump(self.datastore, f, ensure_ascii=False, indent=4, default=str)
+        self.make_plot(f"{self.test_name}_ch0_neg_open_on", "0 to -2kV, open termination", True, False)
+        self.make_plot(f"{self.test_name}_ch0_neg_open_off", "-2kV to 0, open termination", False, False)
+        self.make_plot(f"{self.test_name}_ch0_neg_10k_on", "0 to -2kV, 10k termination", True, False)
+        self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, False)
 
-        print(f"{self.prefix} --> Test complete")
+    def make_plot(self, filename, name, on, pos):
+        ch1_time, ch1_voltage, ch1_current = self.get_ch_data(os.path.join(self.results_path, f"{filename}.csv"))
+
+        fig = plt.figure(figsize=(16, 12), dpi=80)
+        ax = fig.add_subplot(1,1,1)
+
+        ax.plot(ch1_time, ch1_current, label="Ch0 Current")
+        self.format_plot(ax)
+
+        ax2 = ax.twinx()
+        ax2.plot(ch1_time, ch1_voltage, label="Ch0 Voltage", color="red")
+
+        fig.suptitle((name), fontsize=36)
+
+        ax.set_xlabel("Time (Minutes:Seconds)", fontsize=24)
+        ax.set_ylabel("Current (uA)", fontsize=24)
+
+        # ax.set_xlim([0,150])
+        if (on and pos):
+            ax2.set_ylim([1950,2002])
+        elif (on and not pos):
+            ax2.set_ylim([-2050, -1998])
+        elif (not on and pos):
+            ax2.set_ylim([-1,50])
+        elif (not on and not pos):
+            ax2.set_ylim([-50,1])
+        ax2.set_ylabel("Voltage (V)", fontsize=24)
+        self.format_plot(ax2)
+
+        fig.legend(loc='lower left', prop={'size': 20}, ncol=2)
+        fig.savefig(os.path.join(self.results_path, f"{filename}.png"))
+        plt.close(fig)
+
+    def get_ch_data(self, data_file):
+        ch1_datetime = []
+        ch1_voltage = []
+        ch1_current = []
+        with open(data_file, 'r', newline='') as csvfile:
+            spamreader = csv.reader(csvfile, delimiter=',')
+            for row in spamreader:
+                ch1_datetime.append(datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f'))
+                ch1_voltage.append(float(row[1]))
+                ch1_current.append(float(row[2]))
+
+        first_time = ch1_datetime[0]
+        ch1_timedelta = [i-first_time for i in ch1_datetime]
+        ch1_time = [datetime(2024, 1, 1, 0, i.seconds//60%60, i.seconds%60, 0) for i in ch1_timedelta]
+        return ch1_time, ch1_voltage, ch1_current
+
+    def format_plot(self, ax):
+        tick_size = 18
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%M:%S'))
+        ax.tick_params(axis='x', labelsize=tick_size, colors='black')  # Set tick size and color here
+        ax.tick_params(axis='y', labelsize=tick_size, colors='black')  # Set tick size and color here
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
