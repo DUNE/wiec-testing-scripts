@@ -99,7 +99,7 @@ class CAENR8033DM_WRAPPER:
                 print(f"{self.prefix} --> Channel {ch} is ramping down to turn off, currently at {self.get_voltage(ch)}")
             time.sleep(self.ramp_wait)
             if (self.get_channel_status(ch) > 0x7):
-                self.channel_error(i, self.get_channel_status(ch))
+                self.channel_error(ch, self.get_channel_status(ch))
 
     #These functions basically get and set different parameters of each channel, with a variable amount of channels as the input
     def get_voltage(self, ch):
