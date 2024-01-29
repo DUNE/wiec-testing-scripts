@@ -32,10 +32,10 @@
 
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
-"caenR8033DM_current_range": 0,
-"caenR8033DM_overcurrent": 300.0,
+"caenR8033DM_current_range": 1,
+"caenR8033DM_overcurrent": 3000.0,
 "caenR8033DM_power_down_mode": 1,
-"caenR8033DM_ramp_down": 500.0,
+"caenR8033DM_ramp_down": 250.0,
 "caenR8033DM_ramp_up": 500.0,
 "caenR8033DM_trip_time": 10.0,
 "caenR8033DM_voltage": 2000.0,

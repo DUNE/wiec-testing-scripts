@@ -64,8 +64,8 @@ class LDOmeasure:
 
         self.datastore['Tests'] = {}
 
-        self.fan_test()
-        self.heater_test()
+        #self.fan_test()
+        #self.heater_test()
         self.hv_test()
 
         if (self.fan_test_result and self.heat_test_result and self.hv_test_result):
@@ -100,11 +100,13 @@ class LDOmeasure:
         self.datastore['spreadsheet_path'] = self.path_to_spreadsheet
 
         json_date = datetime.today().strftime('%Y%m%d%H%M%S')
-        json_date = "20240125152313"
-        #os.makedirs(os.path.join(output_path, json_date))
+        #json_date = "20240125152313"
+        os.makedirs(os.path.join(output_path, json_date))
         self.results_path = os.path.join(output_path, json_date)
         self.json_output_file = os.path.join(self.results_path, f"{json_date}_{self.test_name}.json")
         self.datastore['json_path'] = self.json_output_file
+
+        self.hv_cols = 8
 
         if (os.path.isfile(self.path_to_spreadsheet)):
             self.wb = openpyxl.load_workbook(filename = self.path_to_spreadsheet)
@@ -139,16 +141,20 @@ class LDOmeasure:
                 self.ws.cell(row=2, column=9+i, value=f"TC{i}_Resistance").style = top_style
                 self.ws.cell(row=2, column=13+i, value=f"TC{i}_Temp_Rise").style = top_style
 
-            self.ws.cell(row=1, column=10, value="Heater Test - Resistance for each heating element and temperature rise after heating time").style = top_style
+            self.ws.cell(row=1, column=10, value="Heater Test - Results for each heating element and temperature rise after heating time").style = top_style
             self.ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=17)
 
-            self.ws.cell(row=1, column=18, value="HV Test - Resistance for each configuration").style = top_style
-            self.ws.merge_cells(start_row=1, start_column=18, end_row=1, end_column=21+(7*4))
+            self.ws.cell(row=1, column=18, value="HV Test - Results for each configuration").style = top_style
+            self.ws.merge_cells(start_row=1, start_column=18, end_row=1, end_column=21+(7*self.hv_cols))
             for i in range(8):
-                self.ws.cell(row=2, column=18+(i*4), value=f"Ch{i}+ Open").style = top_style
-                self.ws.cell(row=2, column=19+(i*4), value=f"Ch{i}+ 10k").style = top_style
-                self.ws.cell(row=2, column=20+(i*4), value=f"Ch{i}- Open").style = top_style
-                self.ws.cell(row=2, column=21+(i*4), value=f"Ch{i}- 10k").style = top_style
+                self.ws.cell(row=2, column=18+(i*self.hv_cols), value=f"Ch{i}+ Open Res").style = top_style
+                self.ws.cell(row=2, column=19+(i*self.hv_cols), value=f"Ch{i}+ Open Fit").style = top_style
+                self.ws.cell(row=2, column=20+(i*self.hv_cols), value=f"Ch{i}+ 10k Res").style = top_style
+                self.ws.cell(row=2, column=21+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit").style = top_style
+                self.ws.cell(row=2, column=22+(i*self.hv_cols), value=f"Ch{i}- Open Res").style = top_style
+                self.ws.cell(row=2, column=23+(i*self.hv_cols), value=f"Ch{i}- Open Fit").style = top_style
+                self.ws.cell(row=2, column=24+(i*self.hv_cols), value=f"Ch{i}- 10k Res").style = top_style
+                self.ws.cell(row=2, column=25+(i*self.hv_cols), value=f"Ch{i}- 10k Fit").style = top_style
 
             #Expands each column to have the best width to fit everything
             column_letters = tuple(openpyxl.utils.get_column_letter(col_number + 1) for col_number in range(self.ws.max_column))
@@ -339,7 +345,7 @@ class LDOmeasure:
 
             csv_name = f"{self.test_name}_ch{i}_neg_open_on.csv"
             self.record_hv_data(csv_name)
-            fit = self.hv_curve_fit(csv_name, i)
+            fit = self.hv_curve_fit(csv_name, i+8)
             hv_results[i]["neg_open_fit"] = fit
 
             #Measure the ramp from negative voltage to 0 with open termination
@@ -390,33 +396,32 @@ class LDOmeasure:
 
             print(f"{self.prefix} --> Channel {i} HV results are {hv_results[i]}")
 
-            hv_cols = 8
             for num,j in enumerate(["pos_open_R", "neg_open_R"]):
                 if ((float(hv_results[i][j]) < self.json_data["hv_resistance_max"]) and (float(hv_results[i][j]) > self.json_data["hv_resistance_min"])):
-                    self.ws.cell(row=self.row, column=18+(i*hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=18+(i*hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
 
             for num,j in enumerate(["pos_open_fit", "neg_open_fit"]):
                 if ((float(hv_results[i][j][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j][0][1]) > self.json_data["hv_tau_min"])):
-                    self.ws.cell(row=self.row, column=19+(i*hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=19+(i*hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j][0][1]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
-
-            self.ws.cell(row=self.row, column=18+(i*hv_cols), value=round(float(hv_results[i]["pos_open_R"]), self.rounding_factor))
-            self.ws.cell(row=self.row, column=19+(i*hv_cols), value=round(float(hv_results[i]["pos_open_fit"][0][1]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=20+(i*hv_cols), value=round(float(hv_results[i]["pos_term_R"]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=21+(i*hv_cols), value=round(float(hv_results[i]["pos_term_fit"][0][1]), self.rounding_factor))
-            self.ws.cell(row=self.row, column=22+(i*hv_cols), value=round(float(hv_results[i]["neg_open_R"]), self.rounding_factor))
-            self.ws.cell(row=self.row, column=23+(i*hv_cols), value=round(float(hv_results[i]["neg_open_fit"][0][1]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=24+(i*hv_cols), value=round(float(hv_results[i]["neg_term_R"]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=25+(i*hv_cols), value=round(float(hv_results[i]["neg_term_fit"][0][1]), self.rounding_factor))
+            #
+            # self.ws.cell(row=self.row, column=18+(i*self.hv_cols), value=round(float(hv_results[i]["pos_open_R"]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=19+(i*self.hv_cols), value=round(float(hv_results[i]["pos_open_fit"][0][1]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=20+(i*self.hv_cols), value=round(float(hv_results[i]["pos_term_R"]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=21+(i*self.hv_cols), value=round(float(hv_results[i]["pos_term_fit"][0][1]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=22+(i*self.hv_cols), value=round(float(hv_results[i]["neg_open_R"]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=23+(i*self.hv_cols), value=round(float(hv_results[i]["neg_open_fit"][0][1]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=24+(i*self.hv_cols), value=round(float(hv_results[i]["neg_term_R"]), self.rounding_factor))
+            # self.ws.cell(row=self.row, column=25+(i*self.hv_cols), value=round(float(hv_results[i]["neg_term_fit"][0][1]), self.rounding_factor))
 
             self.datastore[f'hv_ch{i}'] = {}
             for j in ["pos_open_V", "pos_open_I", "pos_open_R", "neg_open_V", "neg_open_I", "neg_open_R", "pos_open_fit", "neg_open_fit"]:
@@ -452,11 +457,13 @@ class LDOmeasure:
             spamreader = csv.reader(csvfile, delimiter=',')
             for row in spamreader:
                 ch_datetime.append(datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f'))
-                ch_voltage.append(float(row[1 + ch]))
-                ch_current.append(float(row[2 + ch]))
+                ch_voltage.append(float(row[1 + (ch*2)]))
+                ch_current.append(float(row[2 + (ch*2)]))
 
+        print(f"For channel {ch}, grabbed column {2 + (ch*2)} and got this data")
+        print(ch_current)
         first_time = ch_datetime[0]
-        ch_timedelta = [i-first_time for i in ch1_datetime]
+        ch_timedelta = [i-first_time for i in ch_datetime]
         ch_time = [datetime(2024, 1, 1, 0, i.seconds//60%60, i.seconds%60, 0) for i in ch_timedelta]
 
         def exp_fit(x, a, b, c):
@@ -465,33 +472,37 @@ class LDOmeasure:
 
         first_timestamp = ch_time[0].timestamp()
         time_seconds = [dt.timestamp() - first_timestamp for dt in ch_time]
-        fit = curve_fit(exp_fit, time_seconds, ch_current)
+        try:
+            fit = curve_fit(exp_fit, time_seconds, ch_current)
+        except RuntimeError:
+            fit = [[0,0]]
         return fit
 
     def make_hv_plots(self):
         ch0_pos_open_fit = self.datastore['hv_ch0']['pos_open_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_pos_open_on", "0 to 2kV, open termination", True, True, ch0_pos_open_fit)
-        self.make_plot(f"{self.test_name}_ch0_pos_open_off", "2kV to 0, open termination", False, True)
+        self.make_plot(f"{self.test_name}_ch0_pos_open_on", "0 to 2kV, open termination", True, True, 0, ch0_pos_open_fit)
+        # self.make_plot(f"{self.test_name}_ch0_pos_open_off", "2kV to 0, open termination", False, True)
         # self.make_plot(f"{self.test_name}_ch0_pos_10k_on", "0 to 2kV, 10k termination", True, True)
         # self.make_plot(f"{self.test_name}_ch0_pos_10k_off", "2kV to 0, 10k termination", False, True)
 
         ch0_neg_open_fit = self.datastore['hv_ch0']['neg_open_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_neg_open_on", "0 to -2kV, open termination", True, False)
-        self.make_plot(f"{self.test_name}_ch0_neg_open_off", "-2kV to 0, open termination", False, False)
+        self.make_plot(f"{self.test_name}_ch0_neg_open_on", "0 to -2kV, open termination", True, False, 8, ch0_neg_open_fit)
+        # self.make_plot(f"{self.test_name}_ch0_neg_open_off", "-2kV to 0, open termination", False, False)
         # self.make_plot(f"{self.test_name}_ch0_neg_10k_on", "0 to -2kV, 10k termination", True, False)
+        # self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, True)
 
-    def make_plot(self, filename, name, on, pos, fit=None):
-        ch1_time, ch1_voltage, ch1_current = self.get_ch_data(os.path.join(self.results_path, f"{filename}.csv"))
+    def make_plot(self, filename, name, on, pos, ch, fit=None):
+        ch1_time, ch1_voltage, ch1_current = self.get_ch_data(os.path.join(self.results_path, f"{filename}.csv"), ch)
         # self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, False)
 
         fig = plt.figure(figsize=(16, 12), dpi=80)
         ax = fig.add_subplot(1,1,1)
 
-        ax.plot(ch1_time, ch1_current, label="Ch0 Current")
+        ax.plot(ch1_time, ch1_current, label="Ch Current")
         self.format_plot(ax)
 
         ax2 = ax.twinx()
-        ax2.plot(ch1_time, ch1_voltage, label="Ch0 Voltage", color="red")
+        ax2.plot(ch1_time, ch1_voltage, label="Ch Voltage", color="red")
 
         fig.suptitle((name), fontsize=36)
 
@@ -499,7 +510,7 @@ class LDOmeasure:
         ax.set_ylabel("Current (uA)", fontsize=24)
 
         # ax.set_xlim([0,150])
-        if (on and pos):
+        if (on):
             ax2.set_ylim([1950,2002])
         elif (not on and not pos):
             ax2.set_ylim([-1,1])
@@ -516,7 +527,7 @@ class LDOmeasure:
         fig.savefig(os.path.join(self.results_path, f"{filename}.png"))
         plt.close(fig)
 
-    def get_ch_data(self, data_file):
+    def get_ch_data(self, data_file, ch):
         ch1_datetime = []
         ch1_voltage = []
         ch1_current = []
@@ -524,8 +535,8 @@ class LDOmeasure:
             spamreader = csv.reader(csvfile, delimiter=',')
             for row in spamreader:
                 ch1_datetime.append(datetime.strptime(row[0], '%Y-%m-%d %H:%M:%S.%f'))
-                ch1_voltage.append(float(row[1]))
-                ch1_current.append(float(row[2]))
+                ch1_voltage.append(float(row[1+(ch*2)]))
+                ch1_current.append(float(row[2+(ch*2)]))
 
         first_time = ch1_datetime[0]
         ch1_timedelta = [i-first_time for i in ch1_datetime]

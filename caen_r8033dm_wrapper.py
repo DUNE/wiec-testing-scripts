@@ -5,7 +5,7 @@ import time
 
 class CAENR8033DM_WRAPPER:
     def __init__(self, json_data):
-        self.prefix = "CAEN R8033DM"            #Prefix for log messages
+        self.prefix = "CAEN R8033DM Wrapper"            #Prefix for log messages
         self.json_data = json_data
         self.caen = CAENR8033DM(json_data)      #Creates instance of lower level which holds the connection
         self.rounding_factor = 2                #When comparing floats, we need to round
