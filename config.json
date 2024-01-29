@@ -27,6 +27,8 @@
 
 "hv_resistance_max": 1E9,
 "hv_resistance_min": 1E6,
+"hv_tau_max": 0.2,
+"hv_tau_min": 0.05,
 
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
