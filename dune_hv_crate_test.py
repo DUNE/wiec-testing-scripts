@@ -413,15 +413,6 @@ class LDOmeasure:
                     self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j][0][1]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
-            #
-            # self.ws.cell(row=self.row, column=18+(i*self.hv_cols), value=round(float(hv_results[i]["pos_open_R"]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=19+(i*self.hv_cols), value=round(float(hv_results[i]["pos_open_fit"][0][1]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=20+(i*self.hv_cols), value=round(float(hv_results[i]["pos_term_R"]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=21+(i*self.hv_cols), value=round(float(hv_results[i]["pos_term_fit"][0][1]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=22+(i*self.hv_cols), value=round(float(hv_results[i]["neg_open_R"]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=23+(i*self.hv_cols), value=round(float(hv_results[i]["neg_open_fit"][0][1]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=24+(i*self.hv_cols), value=round(float(hv_results[i]["neg_term_R"]), self.rounding_factor))
-            # self.ws.cell(row=self.row, column=25+(i*self.hv_cols), value=round(float(hv_results[i]["neg_term_fit"][0][1]), self.rounding_factor))
 
             self.datastore[f'hv_ch{i}'] = {}
             for j in ["pos_open_V", "pos_open_I", "pos_open_R", "neg_open_V", "neg_open_I", "neg_open_R", "pos_open_fit", "neg_open_fit"]:
@@ -460,8 +451,8 @@ class LDOmeasure:
                 ch_voltage.append(float(row[1 + (ch*2)]))
                 ch_current.append(float(row[2 + (ch*2)]))
 
-        print(f"For channel {ch}, grabbed column {2 + (ch*2)} and got this data")
-        print(ch_current)
+        #print(f"For channel {ch}, grabbed column {2 + (ch*2)} and got this data")
+        #print(ch_current)
         first_time = ch_datetime[0]
         ch_timedelta = [i-first_time for i in ch_datetime]
         ch_time = [datetime(2024, 1, 1, 0, i.seconds//60%60, i.seconds%60, 0) for i in ch_timedelta]
