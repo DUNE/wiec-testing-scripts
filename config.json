@@ -7,7 +7,7 @@
 "rounding_factor": 2,
 
 "hv_stability_wait": 5.0,
-"hv_termination_wait": 2.0,
+"hv_termination_wait": 5.0,
 "hv_minutes_duration": 5,
 "hv_seconds_interval": 1,
 "heat_wait": 10.0,
@@ -25,10 +25,12 @@
 "temp_increase_max": 5.0,
 "temp_increase_min": 1.0,
 
-"hv_resistance_max": 1E9,
-"hv_resistance_min": 1E6,
-"hv_tau_max": 0.2,
-"hv_tau_min": 0.05,
+"hv_resistance_open_max": 50E3,
+"hv_resistance_open_min": 10E3,
+"hv_resistance_term_max": 1.1,
+"hv_resistance_term_min": 0.9,
+"hv_tau_max": 0.03,
+"hv_tau_min": 0.01,
 
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
@@ -36,7 +38,7 @@
 "caenR8033DM_overcurrent": 3000.0,
 "caenR8033DM_power_down_mode": 1,
 "caenR8033DM_ramp_down": 250.0,
-"caenR8033DM_ramp_up": 500.0,
+"caenR8033DM_ramp_up": 250.0,
 "caenR8033DM_trip_time": 10.0,
 "caenR8033DM_voltage": 2000.0,
 
