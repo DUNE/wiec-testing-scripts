@@ -149,12 +149,12 @@ class LDOmeasure:
             for i in range(8):
                 self.ws.cell(row=2, column=18+(i*self.hv_cols), value=f"Ch{i}+ Open Res").style = top_style
                 self.ws.cell(row=2, column=19+(i*self.hv_cols), value=f"Ch{i}+ Open Fit").style = top_style
-                self.ws.cell(row=2, column=20+(i*self.hv_cols), value=f"Ch{i}+ 1M Res").style = top_style
-                self.ws.cell(row=2, column=21+(i*self.hv_cols), value=f"Ch{i}+ 1M Fit").style = top_style
+                self.ws.cell(row=2, column=20+(i*self.hv_cols), value=f"Ch{i}+ 10k Res").style = top_style
+                self.ws.cell(row=2, column=21+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit").style = top_style
                 self.ws.cell(row=2, column=22+(i*self.hv_cols), value=f"Ch{i}- Open Res").style = top_style
                 self.ws.cell(row=2, column=23+(i*self.hv_cols), value=f"Ch{i}- Open Fit").style = top_style
-                self.ws.cell(row=2, column=24+(i*self.hv_cols), value=f"Ch{i}- 1M Res").style = top_style
-                self.ws.cell(row=2, column=25+(i*self.hv_cols), value=f"Ch{i}- 1M Fit").style = top_style
+                self.ws.cell(row=2, column=24+(i*self.hv_cols), value=f"Ch{i}- 10k Res").style = top_style
+                self.ws.cell(row=2, column=25+(i*self.hv_cols), value=f"Ch{i}- 10k Fit").style = top_style
 
             #Expands each column to have the best width to fit everything
             column_letters = tuple(openpyxl.utils.get_column_letter(col_number + 1) for col_number in range(self.ws.max_column))
@@ -315,27 +315,27 @@ class LDOmeasure:
 
             #self.record_hv_data(f"{self.test_name}_ch{i}_pos_open_off.csv")
 
-            #Measure the ramp from 0 to positive voltage with 1M termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {self.json_data['caenR8033DM_voltage']}V with 1M termination")
+            #Measure the ramp from 0 to positive voltage with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {self.json_data['caenR8033DM_voltage']}V with 10k termination")
             self.k.set_relay(0, 0)
             self.c.turn_on(i)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_pos_1M_on.csv"
-            self.record_hv_data(f"{self.test_name}_ch{i}_pos_1M_on.csv")
+            csv_name = f"{self.test_name}_ch{i}_pos_10k_on.csv"
+            self.record_hv_data(f"{self.test_name}_ch{i}_pos_10k_on.csv")
             fit = self.hv_curve_fit(csv_name, i, term = True)
             hv_results[i]["pos_term_fit"] = fit
             hv_results[i]["pos_term_V"] = self.c.get_voltage(i)
             hv_results[i]["pos_term_I"] = self.c.get_current(i)
 
-            #Measure the ramp from positive voltage to 0 with 1M termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from {self.json_data['caenR8033DM_voltage']}V to 0 with 1M termination")
+            #Measure the ramp from positive voltage to 0 with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from {self.json_data['caenR8033DM_voltage']}V to 0 with 10k termination")
             self.c.turn_off(i)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #self.record_hv_data(f"{self.test_name}_ch{i}_pos_1M_off.csv")
+            #self.record_hv_data(f"{self.test_name}_ch{i}_pos_10k_off.csv")
 
             #Measure the ramp from 0 to negative voltage with open termination
             print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with open termination")
@@ -360,27 +360,27 @@ class LDOmeasure:
             #self.record_hv_data(f"{self.test_name}_ch{i}_neg_open_off.csv")
 
 
-            #Measure the ramp from 0 to negative voltage with 1M termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with 1M termination")
+            #Measure the ramp from 0 to negative voltage with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with 10k termination")
             self.k.set_relay(1 << i, 0)
             self.c.turn_on(i+8)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_neg_1M_on.csv"
-            self.record_hv_data(f"{self.test_name}_ch{i}_neg_1M_on.csv")
+            csv_name = f"{self.test_name}_ch{i}_neg_10k_on.csv"
+            self.record_hv_data(f"{self.test_name}_ch{i}_neg_10k_on.csv")
             fit = self.hv_curve_fit(csv_name, i+8, term = True)
             hv_results[i]["neg_term_fit"] = fit
             hv_results[i]["neg_term_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_term_I"] = self.c.get_current(i+8)
 
-            #Measure the ramp from 0 to negative voltage with 1M termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from -{self.json_data['caenR8033DM_voltage']}V to 0 with 1M termination")
+            #Measure the ramp from 0 to negative voltage with 10k termination
+            print(f"{self.prefix} --> Turning Channel {i} HV from -{self.json_data['caenR8033DM_voltage']}V to 0 with 10k termination")
             self.c.turn_off(i+8)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #self.record_hv_data(f"{self.test_name}_ch{i}_neg_1M_off.csv")
+            #self.record_hv_data(f"{self.test_name}_ch{i}_neg_10k_off.csv")
 
             self.r1.power("OFF", "hvpullup")
             self.r1.power("OFF", "hvpullup2")
@@ -491,19 +491,19 @@ class LDOmeasure:
         self.make_plot(f"{self.test_name}_ch0_pos_open_on", "0 to 2kV, open termination", True, True, 0, ch0_pos_open_fit)
         # self.make_plot(f"{self.test_name}_ch0_pos_open_off", "2kV to 0, open termination", False, True)
         ch0_pos_term_fit = self.datastore['hv_ch0']['pos_term_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_pos_1M_on", "0 to 2kV, 1M termination", True, True, 0, ch0_pos_term_fit)
-        #self.make_plot(f"{self.test_name}_ch0_pos_1M_off", "2kV to 0, 1M termination", False, True, 0)
+        self.make_plot(f"{self.test_name}_ch0_pos_10k_on", "0 to 2kV, 10k termination", True, True, 0, ch0_pos_term_fit)
+        #self.make_plot(f"{self.test_name}_ch0_pos_10k_off", "2kV to 0, 10k termination", False, True, 0)
 
         ch0_neg_open_fit = self.datastore['hv_ch0']['neg_open_fit'][0][1]
         self.make_plot(f"{self.test_name}_ch0_neg_open_on", "0 to -2kV, open termination", True, False, 8, ch0_neg_open_fit)
         # self.make_plot(f"{self.test_name}_ch0_neg_open_off", "-2kV to 0, open termination", False, False)
         ch0_neg_term_fit = self.datastore['hv_ch0']['neg_term_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_neg_1M_on", "0 to -2kV, 1M termination", True, False, 8, ch0_neg_term_fit)
-        #self.make_plot(f"{self.test_name}_ch0_neg_1M_off", "-2kV to 0, 1M termination", False, True, 8)
+        self.make_plot(f"{self.test_name}_ch0_neg_10k_on", "0 to -2kV, 10k termination", True, False, 8, ch0_neg_term_fit)
+        #self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, True, 8)
 
     def make_plot(self, filename, name, on, pos, ch, fit=None):
         ch1_time, ch1_voltage, ch1_current = self.get_ch_data(os.path.join(self.results_path, f"{filename}.csv"), ch)
-        # self.make_plot(f"{self.test_name}_ch0_neg_1M_off", "-2kV to 0, 1M termination", False, False)
+        # self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, False)
 
         fig = plt.figure(figsize=(16, 12), dpi=80)
         ax = fig.add_subplot(1,1,1)
@@ -521,7 +521,7 @@ class LDOmeasure:
 
         # ax.set_xlim([0,150])
         if (on):
-            ax2.set_ylim([1950,2002])
+            ax2.set_ylim([115,121])
         elif (not on and not pos):
             ax2.set_ylim([-1,1])
         ax2.set_ylabel("Voltage (V)", fontsize=24)
