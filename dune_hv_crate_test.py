@@ -69,7 +69,7 @@ class LDOmeasure:
         self.hv_test()
 
         if (self.fan_test_result and self.heat_test_result and self.hv_test_result):
-            self.ws.cell(row=self.row, column=1, value=self.test_name)
+            self.ws.cell(row=self.row, column=1, value=self.test_name).style = "pass"
             self.datastore['overall'] = "Pass"
         else:
             self.ws.cell(row=self.row, column=1, value=self.test_name).style = "fail"
@@ -127,6 +127,10 @@ class LDOmeasure:
             self.fail_style = openpyxl.styles.NamedStyle(name="fail")
             self.fail_style.font = openpyxl.styles.Font(color="FF0000", name='Calibri')
             self.wb.add_named_style(self.fail_style)
+
+            self.pass_style = openpyxl.styles.NamedStyle(name="pass")
+            self.pass_style.font = openpyxl.styles.Font(color="009900", name='Calibri')
+            self.wb.add_named_style(self.pass_style)
 
             #Yes I'm using magic numbers, but I need to build the spreadsheet in a specific way, hopefully it's only done once here
             self.ws.cell(row=2, column=1, value="Test Name").style = top_style
