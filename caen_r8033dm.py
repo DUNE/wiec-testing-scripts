@@ -62,12 +62,13 @@ class CAENR8033DM:
         # self.set_board_parameter("BdIlkm", 1)
         # self.get_board_parameter_value("BdIlkm")
 
+        #Turn off any channels that are turned on
         self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Pw", [0])
         self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Pw")
         self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "Status")
-
-        self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange", [1])
-        self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange")
+        #
+        # self.set_ch_parameter([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange", [1])
+        # self.get_channel_parameter_value([0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], "IMRange")
 
         #print("Channel properties are:")
         #pprint.pprint(self.ch_params, width = 1)
@@ -530,10 +531,10 @@ class CAENR8033DM:
     def check_return(self, ret, failmessage = None, passmessage = None):
         if (ret != 0):
             if (ret == 2):
-                print(f"{self.prefix} --> Write Error, the CAEN R8033DM is probably not in remote programming mode. Check the panel to set it to 'Remote' rather than 'Local'")
+                sys.exit(f"{self.prefix} --> Write Error, the CAEN R8033DM is probably not in remote programming mode. Check the panel to set it to 'Remote' rather than 'Local'")
             if (failmessage):
                 print(f"{self.prefix} --> {failmessage}")
-                print(f"{self.prefix} --> Attempt to communicate with CAEN R8033DM resulted in error code {hex(ret)}")
+                sys.exit(f"{self.prefix} --> Attempt to communicate with CAEN R8033DM resulted in error code {hex(ret)}")
             return -1
         else:
             if (passmessage):
