@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 import openpyxl
 from datetime import datetime
+from rigol_dp832a import RigolDP832A
 from caen_r8033dm_wrapper import CAENR8033DM_WRAPPER
 
 class LDOmeasure:
@@ -19,6 +20,9 @@ class LDOmeasure:
 
         #Initialize all instruments first so that you don't waste time with input if something is not connected
         self.c = CAENR8033DM_WRAPPER(self.json_data)
+        self.r1 = RigolDP832A(self.rm, self.json_data, 1)
+        self.r1.setup_hvpullup()
+        self.r1.setup_hvpullup2()
 
         #Now we can get the input for the name of the test
         if (name):
@@ -41,6 +45,27 @@ class LDOmeasure:
         self.sequence()
 
     def sequence(self):
+        data = []
+        self.r1.power("ON", "hvpullup")
+        self.r1.power("ON", "hvpullup2")
+        self.c.turn_off(0)
+        self.c.set_HV_value(0, 1)
+        self.c.turn_on(0)
+        for i in range(120):
+            print(f"{i}V")
+            self.c.set_HV_value(0, i)
+            time.sleep(60)
+            datum = [i]
+            datum.append(self.c.get_voltage(0))
+            datum.append(self.c.get_current(0))
+            data.append(datum)
+        with open(f"{self.test_name}_scan_voltage.csv", 'w') as fp:
+            csv_writer = csv.writer(fp, delimiter=',')
+            csv_writer.writerows(data)
+
+        self.c.turn_off(0)
+        self.r1.power("OFF", "hvpullup")
+        self.r1.power("OFF", "hvpullup2")
         input("Ready for all channel connected and positive test?")
         self.c.turn_on([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15])
         data = []

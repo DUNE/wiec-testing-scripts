@@ -443,7 +443,7 @@ class LDOmeasure:
         data = []
         cycle_start_time = time.time()
         prev_measurement = cycle_start_time - 1
-        print(f"{self.prefix} --> Collecting data for {name} for {self.json_data['hv_minutes_duration']} minutes...")
+        print(f"{self.prefix} --> Collecting data for {name} for {self.json_data['hv_minutes_duration']} minutes starting at {cycle_start_time}...")
         while (time.time() - cycle_start_time < (self.json_data['hv_minutes_duration'] * 60)):
             if (time.time() > prev_measurement + self.json_data['hv_seconds_interval']):
                 #print(f"{self.prefix} --> Measurement taken at {time.time()}")

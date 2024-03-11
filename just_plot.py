@@ -30,7 +30,7 @@ class JustPlot:
 
         # ax.set_xlim([0,150])
         if (on):
-            ax2.set_ylim([115,121])
+            ax2.set_ylim([15,21])
         elif (not on and not pos):
             ax2.set_ylim([-1,1])
         ax2.set_ylabel("Voltage (V)", fontsize=24)
@@ -43,6 +43,7 @@ class JustPlot:
             verticalalignment='top', bbox=props)
 
         fig.legend(loc='lower left', prop={'size': 20}, ncol=2)
+        ax.yaxis.set_major_formatter('{x:9<5.3f}')
         fig.savefig(os.path.join(self.results_path, f"{filename}.png"))
         plt.close(fig)
 
@@ -72,8 +73,8 @@ class JustPlot:
 
 if __name__ == "__main__":
     jp = JustPlot()
-    jp.results_path = "/home/dune-daq/DUNE-HV-Crate-Testing/results/20240209114452"
-    # jp.make_plot("ch1_10k_replaced_ch0_pos_open_on", "0 to 120V, open termination", True, True, 0)
-    # jp.make_plot("ch1_10k_replaced_ch0_pos_10k_on", "0 to 120V, 10k termination", True, True, 0)
-    # jp.make_plot("ch1_10k_replaced_ch0_neg_open_on", "0 to -120V, open termination", True, False, 8)
-    jp.make_plot("ch1_10k_replaced_ch0_neg_10k_on", "0 to -120V, 10k termination", True, False, 8)
+    jp.results_path = "/home/dune-daq/DUNE-HV-Crate-Testing/results/20240311115712"
+    jp.make_plot("20v_hv_ch0_pos_open_on", "0 to 20V, open termination", True, True, 0)
+    jp.make_plot("20v_hv_ch0_pos_10k_on", "0 to 20V, 10k termination", True, True, 0)
+    jp.make_plot("20v_hv_ch0_neg_open_on", "0 to -20V, open termination", True, False, 8)
+    jp.make_plot("20v_hv_ch0_neg_10k_on", "0 to -20V, 10k termination", True, False, 8)
