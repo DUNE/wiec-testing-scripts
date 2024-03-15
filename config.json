@@ -40,7 +40,8 @@
 "caenR8033DM_ramp_down": 250.0,
 "caenR8033DM_ramp_up": 250.0,
 "caenR8033DM_trip_time": 10.0,
-"caenR8033DM_voltage": 120.0,
+"caenR8033DM_open_voltage": 2000,
+"caenR8033DM_term_voltage": 20,
 
 "keysight970a": "TCPIP::169.254.9.69::INSTR",
 "keysight970a_901A_slot": 1,

@@ -30,7 +30,7 @@ class CAENR8033DM_WRAPPER:
         self.set_rampdown(channels, self.json_data['caenR8033DM_ramp_down'])
         self.set_rampup(channels, self.json_data['caenR8033DM_ramp_up'])
         self.set_trip_time(channels, self.json_data['caenR8033DM_trip_time'])
-        self.set_HV_value(channels, self.json_data['caenR8033DM_voltage'])
+        self.set_HV_value(channels, self.json_data['caenR8033DM_term_voltage'])
 
         # print(self.get_channel_status(3))
         # print(self.get_channel_status([3,4,5,6, 7]))

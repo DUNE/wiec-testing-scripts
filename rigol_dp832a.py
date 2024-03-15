@@ -13,6 +13,8 @@ class RigolDP832A:
         self.rigol = rm.open_resource(self.json_data[f'rigol832a{index}'])
         print(f"{self.prefix} --> Connected to {self.rigol.query('*IDN?')}")
         self.rigol.write("*RST")
+        self.rigol.write("SYSTem:BEEPer:STATe ON")
+        #self.rigol.write("SYSTem:BEEPer:IMMediate")
         self.channels = []
         self.index = index
         self.channel_num = 3
@@ -106,3 +108,6 @@ class RigolDP832A:
         if (chan != 0):
             status = self.rigol.query(f"SOURce{chan}:CURRent:PROTection:TRIPped?")
             return status
+
+    def beep(self):
+        self.rigol.write("SYSTem:BEEPer:IMMediate")

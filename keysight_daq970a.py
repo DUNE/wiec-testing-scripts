@@ -14,6 +14,8 @@ class Keysight970A:
         self.keysight.write("*RST")
 
         #Common commands
+        self.keysight.write("SYSTem:BEEPer:STATe ON")
+        #self.keysight.write("SYSTem:BEEPer:IMMediate")
         self.keysight.write("FORMat:READing:CHANnel ON")
 
         #Keeps track of state to make sure commands don't collide
@@ -152,3 +154,6 @@ class Keysight970A:
             results[self.fan_convert[f"{sep[i+1]}"]] = float(sep[i])
 
         return results
+
+    def beep(self):
+        self.keysight.write("SYSTem:BEEPer:IMMediate")

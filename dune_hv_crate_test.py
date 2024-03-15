@@ -10,6 +10,7 @@ from rigol_dp832a import RigolDP832A
 from caen_r8033dm_wrapper import CAENR8033DM_WRAPPER
 
 import csv
+from pathlib import Path
 import matplotlib.dates as mdates
 import matplotlib.ticker as mticker
 from datetime import datetime, timedelta
@@ -85,7 +86,8 @@ class LDOmeasure:
             json.dump(self.datastore, f, ensure_ascii=False, indent=4, default=str)
 
         print(f"{self.prefix} --> Test complete")
-        self.make_hv_plots()
+        self.beep_sequence()
+        #self.make_hv_plots()
 
     #Looks to see if a main spreadsheet of all results exists. If it does, open it and find the next row to write these results to
     #If not, it creates the spreadsheet with the proper headers and formatting
@@ -106,7 +108,7 @@ class LDOmeasure:
         self.json_output_file = os.path.join(self.results_path, f"{json_date}_{self.test_name}.json")
         self.datastore['json_path'] = self.json_output_file
 
-        self.hv_cols = 8
+        self.hv_cols = 12
 
         if (os.path.isfile(self.path_to_spreadsheet)):
             self.wb = openpyxl.load_workbook(filename = self.path_to_spreadsheet)
@@ -152,13 +154,17 @@ class LDOmeasure:
             self.ws.merge_cells(start_row=1, start_column=18, end_row=1, end_column=21+(7*self.hv_cols))
             for i in range(8):
                 self.ws.cell(row=2, column=18+(i*self.hv_cols), value=f"Ch{i}+ Open Res").style = top_style
-                self.ws.cell(row=2, column=19+(i*self.hv_cols), value=f"Ch{i}+ Open Fit").style = top_style
-                self.ws.cell(row=2, column=20+(i*self.hv_cols), value=f"Ch{i}+ 10k Res").style = top_style
-                self.ws.cell(row=2, column=21+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit").style = top_style
-                self.ws.cell(row=2, column=22+(i*self.hv_cols), value=f"Ch{i}- Open Res").style = top_style
-                self.ws.cell(row=2, column=23+(i*self.hv_cols), value=f"Ch{i}- Open Fit").style = top_style
-                self.ws.cell(row=2, column=24+(i*self.hv_cols), value=f"Ch{i}- 10k Res").style = top_style
-                self.ws.cell(row=2, column=25+(i*self.hv_cols), value=f"Ch{i}- 10k Fit").style = top_style
+                self.ws.cell(row=2, column=19+(i*self.hv_cols), value=f"Ch{i}+ Open Fit On").style = top_style
+                self.ws.cell(row=2, column=20+(i*self.hv_cols), value=f"Ch{i}+ Open Fit Off").style = top_style
+                self.ws.cell(row=2, column=21+(i*self.hv_cols), value=f"Ch{i}+ 10k Res").style = top_style
+                self.ws.cell(row=2, column=22+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit On").style = top_style
+                self.ws.cell(row=2, column=23+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit Off").style = top_style
+                self.ws.cell(row=2, column=24+(i*self.hv_cols), value=f"Ch{i}- Open Res").style = top_style
+                self.ws.cell(row=2, column=25+(i*self.hv_cols), value=f"Ch{i}- Open Fit On").style = top_style
+                self.ws.cell(row=2, column=26+(i*self.hv_cols), value=f"Ch{i}- Open Fit Off").style = top_style
+                self.ws.cell(row=2, column=27+(i*self.hv_cols), value=f"Ch{i}- 10k Res").style = top_style
+                self.ws.cell(row=2, column=28+(i*self.hv_cols), value=f"Ch{i}- 10k Fit On").style = top_style
+                self.ws.cell(row=2, column=29+(i*self.hv_cols), value=f"Ch{i}- 10k Fit Off").style = top_style
 
             #Expands each column to have the best width to fit everything
             column_letters = tuple(openpyxl.utils.get_column_letter(col_number + 1) for col_number in range(self.ws.max_column))
@@ -298,7 +304,9 @@ class LDOmeasure:
             hv_results[i] = {}
 
             #Measure the ramp from 0 to positive voltage with open termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {self.json_data['caenR8033DM_voltage']}V with open termination")
+            v = self.json_data['caenR8033DM_open_voltage']
+            self.c.set_HV_value(i, v)
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {v}V with open termination")
             self.k.set_relay(0, 1 << i)
             self.c.turn_on(i)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
@@ -306,43 +314,57 @@ class LDOmeasure:
 
             csv_name = f"{self.test_name}_ch{i}_pos_open_on.csv"
             self.record_hv_data(csv_name)
-            fit = self.hv_curve_fit(csv_name, i)
-            hv_results[i]["pos_open_fit"] = fit
+            fit = self.hv_curve_fit(csv_name, i, on = True, term = False)
+            hv_results[i]["pos_open_on_fit"] = fit
             hv_results[i]["pos_open_V"] = self.c.get_voltage(i)
             hv_results[i]["pos_open_I"] = self.c.get_current(i)
+            self.make_plot(csv_name, f"0 to {v}V, open termination", i, fit[0][1], [v-5, v+1])
 
             #Measure the ramp from positive voltage to 0 with open termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from {self.json_data['caenR8033DM_voltage']}V to 0 with open termination")
+            print(f"{self.prefix} --> Turning Channel {i} HV from {v}V to 0 with open termination")
             self.c.turn_off(i)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #self.record_hv_data(f"{self.test_name}_ch{i}_pos_open_off.csv")
+            csv_name = f"{self.test_name}_ch{i}_pos_open_off.csv"
+            self.record_hv_data(csv_name)
+            fit = self.hv_curve_fit(csv_name, i, on = False, term = False)
+            hv_results[i]["pos_open_off_fit"] = fit
+            self.make_plot(csv_name, f"{v} to 0V, open termination", i, fit[0][1])
 
             #Measure the ramp from 0 to positive voltage with 10k termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {self.json_data['caenR8033DM_voltage']}V with 10k termination")
+            v = self.json_data['caenR8033DM_term_voltage']
+            self.c.set_HV_value(i, v)
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to {v}V with 10k termination")
             self.k.set_relay(0, 0)
             self.c.turn_on(i)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_pos_10k_on.csv"
-            self.record_hv_data(f"{self.test_name}_ch{i}_pos_10k_on.csv")
-            fit = self.hv_curve_fit(csv_name, i, term = True)
-            hv_results[i]["pos_term_fit"] = fit
+            csv_name = f"{self.test_name}_ch{i}_pos_term_on.csv"
+            self.record_hv_data(csv_name)
+            fit = self.hv_curve_fit(csv_name, i, on = True, term = True)
+            hv_results[i]["pos_term_on_fit"] = fit
             hv_results[i]["pos_term_V"] = self.c.get_voltage(i)
             hv_results[i]["pos_term_I"] = self.c.get_current(i)
+            self.make_plot(csv_name, f"0 to {v}V, termination resistor", i, fit[0][1], [v-5, v+1])
 
             #Measure the ramp from positive voltage to 0 with 10k termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from {self.json_data['caenR8033DM_voltage']}V to 0 with 10k termination")
+            print(f"{self.prefix} --> Turning Channel {i} HV from {v}V to 0 with 10k termination")
             self.c.turn_off(i)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #self.record_hv_data(f"{self.test_name}_ch{i}_pos_10k_off.csv")
+            csv_name = f"{self.test_name}_ch{i}_pos_term_off.csv"
+            self.record_hv_data(csv_name)
+            fit = self.hv_curve_fit(csv_name, i, on = False, term = True)
+            hv_results[i]["pos_term_off_fit"] = fit
+            self.make_plot(csv_name, f"{v} to 0V, termination resistor", i, fit[0][1])
 
             #Measure the ramp from 0 to negative voltage with open termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with open termination")
+            v = self.json_data['caenR8033DM_open_voltage']
+            self.c.set_HV_value(i+8, v)
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{v}V with open termination")
             self.k.set_relay(1 << i, 1 << i)
             self.c.turn_on(i+8)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
@@ -350,41 +372,53 @@ class LDOmeasure:
 
             csv_name = f"{self.test_name}_ch{i}_neg_open_on.csv"
             self.record_hv_data(csv_name)
-            fit = self.hv_curve_fit(csv_name, i+8)
-            hv_results[i]["neg_open_fit"] = fit
+            fit = self.hv_curve_fit(csv_name, i+8, on = True, term = False)
+            hv_results[i]["neg_open_on_fit"] = fit
             hv_results[i]["neg_open_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_open_I"] = self.c.get_current(i+8)
+            self.make_plot(csv_name, f"0 to -{v}V, open termination", i+8, fit[0][1], [v-5, v+1])
 
             #Measure the ramp from negative voltage to 0 with open termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from -{self.json_data['caenR8033DM_voltage']}V to 0 with open termination")
+            print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with open termination")
             self.c.turn_off(i+8)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #self.record_hv_data(f"{self.test_name}_ch{i}_neg_open_off.csv")
+            csv_name = f"{self.test_name}_ch{i}_neg_open_off.csv"
+            self.record_hv_data(csv_name)
+            fit = self.hv_curve_fit(csv_name, i+8, on = False, term = False)
+            hv_results[i]["neg_open_off_fit"] = fit
+            self.make_plot(csv_name, f"-{v} to 0V, open termination", i+8, fit[0][1])
 
 
             #Measure the ramp from 0 to negative voltage with 10k termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{self.json_data['caenR8033DM_voltage']}V with 10k termination")
+            v = self.json_data['caenR8033DM_term_voltage']
+            self.c.set_HV_value(i+8, v)
+            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{v}V with 10k termination")
             self.k.set_relay(1 << i, 0)
             self.c.turn_on(i+8)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_neg_10k_on.csv"
-            self.record_hv_data(f"{self.test_name}_ch{i}_neg_10k_on.csv")
-            fit = self.hv_curve_fit(csv_name, i+8, term = True)
-            hv_results[i]["neg_term_fit"] = fit
+            csv_name = f"{self.test_name}_ch{i}_neg_term_on.csv"
+            self.record_hv_data(csv_name)
+            fit = self.hv_curve_fit(csv_name, i+8, on = True, term = True)
+            hv_results[i]["neg_term_on_fit"] = fit
             hv_results[i]["neg_term_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_term_I"] = self.c.get_current(i+8)
+            self.make_plot(csv_name, f"0 to -{v}V, termination resistor", i+8, fit[0][1], [v-5, v+1])
 
             #Measure the ramp from 0 to negative voltage with 10k termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from -{self.json_data['caenR8033DM_voltage']}V to 0 with 10k termination")
+            print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with 10k termination")
             self.c.turn_off(i+8)
             print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
 
-            #self.record_hv_data(f"{self.test_name}_ch{i}_neg_10k_off.csv")
+            csv_name = f"{self.test_name}_ch{i}_neg_term_off.csv"
+            self.record_hv_data(csv_name)
+            fit = self.hv_curve_fit(csv_name, i+8, on = False, term = True)
+            hv_results[i]["neg_term_off_fit"] = fit
+            self.make_plot(csv_name, f"-{v} to 0V, termination resistor", i+8, fit[0][1])
 
             self.r1.power("OFF", "hvpullup")
             self.r1.power("OFF", "hvpullup2")
@@ -418,32 +452,33 @@ class LDOmeasure:
                     min_val = self.json_data["hv_resistance_open_min"]
 
                 if ((float(hv_results[i][j]) < max_val) and (float(hv_results[i][j]) > min_val)):
-                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
 
             for num,j in enumerate(["pos_open_fit", "pos_term_fit", "neg_open_fit", "neg_term_fit"]):
                 if ((float(hv_results[i][j][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j][0][1]) > self.json_data["hv_tau_min"])):
-                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j][0][1]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j][0][1]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*2), value=round(float(hv_results[i][j][0][1]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j][0][1]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
 
             self.datastore[f'hv_ch{i}'] = {}
-            for j in ["pos_open_V", "pos_open_I", "pos_open_R", "neg_open_V", "neg_open_I", "neg_open_R", "pos_open_fit", "neg_open_fit",
-                      "pos_term_V", "pos_term_I", "pos_term_R", "neg_term_V", "neg_term_I", "neg_term_R", "pos_term_fit", "neg_term_fit"]:
+            for j in ["pos_open_V", "pos_open_I", "pos_open_R", "neg_open_V", "neg_open_I", "neg_open_R", "pos_open_on_fit", "pos_open_off_fit", "neg_open_on_fit", "neg_open_off_fit",
+                      "pos_term_V", "pos_term_I", "pos_term_R", "neg_term_V", "neg_term_I", "neg_term_R", "pos_term_on_fit", "pos_term_off_fit", "neg_term_on_fit", "neg_term_off_fit"]:
                 self.datastore[f'hv_ch{i}'][j] = hv_results[i][j]
 
     def record_hv_data(self, name):
         data = []
         cycle_start_time = time.time()
+        time_string = datetime.fromtimestamp(cycle_start_time)
         prev_measurement = cycle_start_time - 1
-        print(f"{self.prefix} --> Collecting data for {name} for {self.json_data['hv_minutes_duration']} minutes starting at {cycle_start_time}...")
+        print(f"{self.prefix} --> Collecting data for {name} for {self.json_data['hv_minutes_duration']} minutes starting at {time_string}...")
         while (time.time() - cycle_start_time < (self.json_data['hv_minutes_duration'] * 60)):
             if (time.time() > prev_measurement + self.json_data['hv_seconds_interval']):
                 #print(f"{self.prefix} --> Measurement taken at {time.time()}")
@@ -458,7 +493,7 @@ class LDOmeasure:
             csv_writer.writerows(data)
         #input("ok?")
 
-    def hv_curve_fit(self, name, ch, term = False):
+    def hv_curve_fit(self, name, ch, on = True, term = False):
         ch_datetime = []
         ch_voltage = []
         ch_current = []
@@ -471,7 +506,10 @@ class LDOmeasure:
                     ch_current.append(float(row[2 + (ch*2)])/1000)
                 else:
                     ch_current.append(float(row[2 + (ch*2)]))
-
+        if (on):
+            data = ch_current
+        else:
+            data = ch_voltage
         #print(f"For channel {ch}, grabbed column {2 + (ch*2)} and got this data")
         #print(ch_current)
         first_time = ch_datetime[0]
@@ -485,7 +523,7 @@ class LDOmeasure:
         first_timestamp = ch_time[0].timestamp()
         time_seconds = [dt.timestamp() - first_timestamp for dt in ch_time]
         try:
-            fit = curve_fit(exp_fit, time_seconds, ch_current)
+            fit = curve_fit(exp_fit, time_seconds, data)
         except RuntimeError:
             fit = [[0,0]]
         return fit
@@ -505,8 +543,8 @@ class LDOmeasure:
         self.make_plot(f"{self.test_name}_ch0_neg_10k_on", "0 to -2kV, 10k termination", True, False, 8, ch0_neg_term_fit)
         #self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, True, 8)
 
-    def make_plot(self, filename, name, on, pos, ch, fit=None):
-        ch1_time, ch1_voltage, ch1_current = self.get_ch_data(os.path.join(self.results_path, f"{filename}.csv"), ch)
+    def make_plot(self, filename, name, ch, fit=None, axes = None):
+        ch1_time, ch1_voltage, ch1_current = self.get_ch_data(os.path.join(self.results_path, filename), ch)
         # self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, False)
 
         fig = plt.figure(figsize=(16, 12), dpi=80)
@@ -524,21 +562,20 @@ class LDOmeasure:
         ax.set_ylabel("Current (uA)", fontsize=24)
 
         # ax.set_xlim([0,150])
-        if (on):
-            ax2.set_ylim([115,121])
-        elif (not on and not pos):
-            ax2.set_ylim([-1,1])
+        if (axes):
+            ax2.set_ylim([axes[0],axes[1]])
         ax2.set_ylabel("Voltage (V)", fontsize=24)
         self.format_plot(ax2)
 
-        if (on and fit):
+        if fit:
             textstr = r'$\tau=%.4f$' % (fit)
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
             ax.text(0.75, 0.75, textstr, transform=ax.transAxes, fontsize=24,
             verticalalignment='top', bbox=props)
 
         fig.legend(loc='lower left', prop={'size': 20}, ncol=2)
-        fig.savefig(os.path.join(self.results_path, f"{filename}.png"))
+        stem = Path(filename).stem
+        fig.savefig(os.path.join(self.results_path, f"{stem}.png"))
         plt.close(fig)
 
     def get_ch_data(self, data_file, ch):
@@ -562,6 +599,13 @@ class LDOmeasure:
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%M:%S'))
         ax.tick_params(axis='x', labelsize=tick_size, colors='black')  # Set tick size and color here
         ax.tick_params(axis='y', labelsize=tick_size, colors='black')  # Set tick size and color here
+
+    def beep_sequence(self):
+        self.r0.beep()
+        time.sleep(1)
+        self.r1.beep()
+        time.sleep(1)
+        self.k.beep()
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
