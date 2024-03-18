@@ -26,9 +26,9 @@
 "temp_increase_min": 1.0,
 
 "hv_resistance_open_max": 50E3,
-"hv_resistance_open_min": 10E3,
-"hv_resistance_term_max": 1.1,
-"hv_resistance_term_min": 0.9,
+"hv_resistance_open_min": 5E3,
+"hv_resistance_term_max": 0.075,
+"hv_resistance_term_min": 0.065,
 "hv_tau_max": 0.03,
 "hv_tau_min": 0.01,
 

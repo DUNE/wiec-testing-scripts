@@ -66,7 +66,9 @@ class LDOmeasure:
         self.datastore['Tests'] = {}
 
         self.fan_test()
+        self.wb.save(self.path_to_spreadsheet)
         self.heater_test()
+        self.wb.save(self.path_to_spreadsheet)
         self.hv_test()
 
         if (self.fan_test_result and self.heat_test_result and self.hv_test_result):
@@ -150,7 +152,7 @@ class LDOmeasure:
             self.ws.cell(row=1, column=10, value="Heater Test - Results for each heating element and temperature rise after heating time").style = top_style
             self.ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=17)
 
-            self.ws.cell(row=1, column=18, value="HV Test - Results for each configuration. Resistance in Mega Ohms, time constant is tau (seconds) in a*e^(-tau * t)+c ").style = top_style
+            self.ws.cell(row=1, column=18, value="HV Test - Results for each configuration. Resistance in units shown, time constant is tau (seconds) in a*e^(-tau * t)+c ").style = top_style
             self.ws.merge_cells(start_row=1, start_column=18, end_row=1, end_column=21+(7*self.hv_cols))
             for i in range(8):
                 self.ws.cell(row=2, column=18+(i*self.hv_cols), value=f"Ch{i}+ Open Res").style = top_style
@@ -323,8 +325,8 @@ class LDOmeasure:
             #Measure the ramp from positive voltage to 0 with open termination
             print(f"{self.prefix} --> Turning Channel {i} HV from {v}V to 0 with open termination")
             self.c.turn_off(i)
-            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
+            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            # time.sleep(self.json_data['hv_stability_wait'])
 
             csv_name = f"{self.test_name}_ch{i}_pos_open_off.csv"
             self.record_hv_data(csv_name)
@@ -352,8 +354,8 @@ class LDOmeasure:
             #Measure the ramp from positive voltage to 0 with 10k termination
             print(f"{self.prefix} --> Turning Channel {i} HV from {v}V to 0 with 10k termination")
             self.c.turn_off(i)
-            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
+            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            # time.sleep(self.json_data['hv_stability_wait'])
 
             csv_name = f"{self.test_name}_ch{i}_pos_term_off.csv"
             self.record_hv_data(csv_name)
@@ -381,15 +383,14 @@ class LDOmeasure:
             #Measure the ramp from negative voltage to 0 with open termination
             print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with open termination")
             self.c.turn_off(i+8)
-            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
+            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            # time.sleep(self.json_data['hv_stability_wait'])
 
             csv_name = f"{self.test_name}_ch{i}_neg_open_off.csv"
             self.record_hv_data(csv_name)
             fit = self.hv_curve_fit(csv_name, i+8, on = False, term = False)
             hv_results[i]["neg_open_off_fit"] = fit
             self.make_plot(csv_name, f"-{v} to 0V, open termination", i+8, fit[0][1])
-
 
             #Measure the ramp from 0 to negative voltage with 10k termination
             v = self.json_data['caenR8033DM_term_voltage']
@@ -411,8 +412,8 @@ class LDOmeasure:
             #Measure the ramp from 0 to negative voltage with 10k termination
             print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with 10k termination")
             self.c.turn_off(i+8)
-            print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
+            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            # time.sleep(self.json_data['hv_stability_wait'])
 
             csv_name = f"{self.test_name}_ch{i}_neg_term_off.csv"
             self.record_hv_data(csv_name)
@@ -443,29 +444,46 @@ class LDOmeasure:
 
             print(f"{self.prefix} --> Channel {i} HV results are {hv_results[i]}")
 
-            for num,j in enumerate(["pos_open_R", "pos_term_R", "neg_open_R", "neg_term_R"]):
-                if (num % 2):
-                    max_val = self.json_data["hv_resistance_term_max"]
-                    min_val = self.json_data["hv_resistance_term_min"]
-                else:
-                    max_val = self.json_data["hv_resistance_open_max"]
-                    min_val = self.json_data["hv_resistance_open_min"]
+            for num,j in enumerate(["pos_open_R", "neg_open_R"]):
+                max_val = self.json_data["hv_resistance_open_max"]
+                min_val = self.json_data["hv_resistance_open_min"]
 
                 if ((float(hv_results[i][j]) < max_val) and (float(hv_results[i][j]) > min_val)):
-                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]), self.rounding_factor)}Mohm")
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]), self.rounding_factor)}Mohm").style = "fail"
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
 
-            for num,j in enumerate(["pos_open_fit", "pos_term_fit", "neg_open_fit", "neg_term_fit"]):
-                if ((float(hv_results[i][j][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j][0][1]) > self.json_data["hv_tau_min"])):
-                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j][0][1]), self.rounding_factor))
-                    self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Pass"
+            for num,j in enumerate(["pos_term_R", "neg_term_R"]):
+                max_val = self.json_data["hv_resistance_term_max"]
+                min_val = self.json_data["hv_resistance_term_min"]
+
+                if ((float(hv_results[i][j]) < max_val) and (float(hv_results[i][j]) > min_val)):
+                    self.ws.cell(row=self.row, column=21+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]*1E3), self.rounding_factor)}kohm")
+                    self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j][0][1]), self.rounding_factor)).style = "fail"
-                    self.datastore['Tests'][f'hv_fit_test_ch{i}_{j}'] = "Fail"
+                    self.ws.cell(row=self.row, column=21+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]*1E3), self.rounding_factor)}kohm").style = "fail"
+                    self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
+                    self.hv_test_result = False
+
+            for num,j in enumerate(["pos_open", "pos_term", "neg_open", "neg_term"]):
+                j_on = j + "_on_fit"
+                j_off = j + "_off_fit"
+                if ((float(hv_results[i][j_on][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j_on][0][1]) > self.json_data["hv_tau_min"])):
+                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_on][0][1]), self.rounding_factor))
+                    self.datastore['Tests'][f'hv_on_fit_test_ch{i}_{j_on}'] = "Pass"
+                else:
+                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_on][0][1]), self.rounding_factor)).style = "fail"
+                    self.datastore['Tests'][f'hv_on_fit_test_ch{i}_{j_on}'] = "Fail"
+                    self.hv_test_result = False
+                if ((float(hv_results[i][j_off][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j_off][0][1]) > self.json_data["hv_tau_min"])):
+                    self.ws.cell(row=self.row, column=20+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_off][0][1]), self.rounding_factor))
+                    self.datastore['Tests'][f'hv_off_fit_test_ch{i}_{j_off}'] = "Pass"
+                else:
+                    self.ws.cell(row=self.row, column=20+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_off][0][1]), self.rounding_factor)).style = "fail"
+                    self.datastore['Tests'][f'hv_off_fit_test_ch{i}_{j_off}'] = "Fail"
                     self.hv_test_result = False
 
             self.datastore[f'hv_ch{i}'] = {}
@@ -526,6 +544,18 @@ class LDOmeasure:
             fit = curve_fit(exp_fit, time_seconds, data)
         except RuntimeError:
             fit = [[0,0]]
+        #The result is an array like
+        #[
+        #    "[-0.0003239   0.04760632  0.29665177]",
+
+        #    "[[ 4.03901010e-10 -5.76474012e-08 -2.84934772e-12],
+        #    [-5.76474012e-08  2.38199865e-05 -7.01897955e-09],
+        #    [-2.84934772e-12 -7.01897955e-09  1.26525944e-11]]"
+        #]
+        #The first array is the convergant results for the 3 parameters a, b, and c
+        #The second array is the confidence levels for each based on the covarience with the other variables
+        #Low numbers less than one mean that the confidence is high
+        #https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
         return fit
 
     def make_hv_plots(self):

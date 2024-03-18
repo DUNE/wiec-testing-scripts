@@ -63,6 +63,9 @@ class JustPlot:
         ch1_time = [datetime(2024, 1, 1, 0, i.seconds//60%60, i.seconds%60, 0) for i in ch1_timedelta]
         return ch1_time, ch1_voltage, ch1_current
 
+    def plot_multiple(self):
+        print("Fill in")
+
     def format_plot(self, ax):
         tick_size = 18
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%M:%S'))
