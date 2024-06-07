@@ -42,7 +42,6 @@ class LDOmeasure:
         self.r1.setup_hvpullup()
         self.r1.setup_hvpullup2()
         self.r1.setup_fanread()
-
         #Now we can get the input for the name of the test
         if (name):
             self.test_name = name
@@ -59,9 +58,9 @@ class LDOmeasure:
         self.datastore['start_time'] = self.start_time
         self.initialize_spreadsheet()
 
-        self.fan_test_result = False
-        self.heat_test_result = False
-        self.hv_test_result = False
+        self.fan_test_result = True
+        self.heat_test_result = True
+        self.hv_test_result = True
 
         self.datastore['Tests'] = {}
 
@@ -631,10 +630,23 @@ class LDOmeasure:
         ax.tick_params(axis='y', labelsize=tick_size, colors='black')  # Set tick size and color here
 
     def beep_sequence(self):
+        #First beep is always longer for some reason
         self.r0.beep()
         time.sleep(1)
-        self.r1.beep()
-        time.sleep(1)
+
+        self.r0.beep()
+        time.sleep(0.5)
+        self.r0.beep()
+        time.sleep(0.125)
+        self.r0.beep()
+        time.sleep(0.125)
+        self.r0.beep()
+        time.sleep(0.5)
+        self.r0.beep()
+        time.sleep(0.75)
+
+        self.k.beep()
+        time.sleep(0.5)
         self.k.beep()
 
 if __name__ == "__main__":
