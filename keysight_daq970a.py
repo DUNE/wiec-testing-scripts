@@ -70,7 +70,7 @@ class Keysight970A:
         #Keysight DAQ970A requires you to do a Configure first and then change the parameters with Sense
         #Configure sets the resistance of the RTD, and default resolution
         #It also updates the scan list so only the channels in this Configure command are scanned
-        self.keysight.write(f"CONFigure:TEMPerature:FRTD {self.json_data['keysight970a_rtd_RES']},DEF,({self.rtd_ch_list})")
+        self.keysight.write(f"CONFigure:TEMPerature:RTD {self.json_data['keysight970a_rtd_RES']},DEF,({self.rtd_ch_list})")
 
         #Sets the sample rate a little slower for accuracy, whether in low power mode or not, and units to use
         self.keysight.write(f"SENSe:TEMPerature:NPLCycles {self.json_data['keysight970a_rtd_NPLcycles']},({self.rtd_ch_list})")
@@ -81,7 +81,7 @@ class Keysight970A:
         self.state = "rtd"
 
     def initialize_resistance(self):
-        self.keysight.write(f"CONFigure:FRESistance AUTO,DEF,({self.heater_ch_list})")
+        self.keysight.write(f"CONFigure:RESistance AUTO,DEF,({self.heater_ch_list})")
         self.keysight.write(f"SENSe:RESistance:NPLCycles {self.json_data['keysight970a_heater_NPLcycles']},({self.heater_ch_list})")
         self.keysight.write(f"SENSe:FRESistance:POWer:LIMit:STATe {self.json_data['keysight970a_heater_LowPower']},({self.heater_ch_list})")
         self.keysight.write(f"SENSe:RESistance:OCOMpensated {self.json_data['keysight970a_heater_ocomp']},({self.heater_ch_list})")
