@@ -48,10 +48,10 @@
 "keysight970a_907A_slot": 2,
 
 "keysight970a_rtd_num": 4,
-"keysight970a_rtd_ch1": 1,
-"keysight970a_rtd_ch2": 2,
-"keysight970a_rtd_ch3": 3,
-"keysight970a_rtd_ch4": 4,
+"keysight970a_rtd_ch1": 11,
+"keysight970a_rtd_ch2": 12,
+"keysight970a_rtd_ch3": 13,
+"keysight970a_rtd_ch4": 14,
 
 "keysight970a_rtd_RES": 100,
 "keysight970a_rtd_NPLcycles": "10",
@@ -71,10 +71,10 @@
 "keysight970a_heater_delay": 5.0,
 
 "keysight970a_fan_num": 4,
-"keysight970a_fan_ch1": 9,
-"keysight970a_fan_ch2": 10,
-"keysight970a_fan_ch3": 19,
-"keysight970a_fan_ch4": 20,
+"keysight970a_fan_ch1": 1,
+"keysight970a_fan_ch2": 2,
+"keysight970a_fan_ch3": 3,
+"keysight970a_fan_ch4": 4,
 
 "keysight970a_fan_NPLcycles": 10,
 "keysight970a_fan_autozero": "ON",

@@ -20,9 +20,12 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 class LDOmeasure:
-    def __init__(self, config_file, name = None):
+    def __init__(self, config_file = None, name = None):
         self.prefix = "DUNE HV Crate Tester"
         print(f"{self.prefix} --> Welcome to the DUNE HV crate production testing script")
+        if not config_file:
+            print(f"{self.prefix} --> No config file given, test will not run")
+            return
         with open(config_file, "r") as jsonfile:
             self.json_data = json.load(jsonfile)
         self.rm = pyvisa.ResourceManager('@py')
@@ -319,7 +322,7 @@ class LDOmeasure:
             hv_results[i]["pos_open_on_fit"] = fit
             hv_results[i]["pos_open_V"] = self.c.get_voltage(i)
             hv_results[i]["pos_open_I"] = self.c.get_current(i)
-            self.make_plot(csv_name, f"0 to {v}V, open termination", i, fit[0][1], [v-5, v+1])
+            self.make_plot(csv_name, f"0 to {v}V, open termination", i, fit[0][1], [v-5, v+5])
 
             #Measure the ramp from positive voltage to 0 with open termination
             print(f"{self.prefix} --> Turning Channel {i} HV from {v}V to 0 with open termination")
@@ -348,7 +351,7 @@ class LDOmeasure:
             hv_results[i]["pos_term_on_fit"] = fit
             hv_results[i]["pos_term_V"] = self.c.get_voltage(i)
             hv_results[i]["pos_term_I"] = self.c.get_current(i)
-            self.make_plot(csv_name, f"0 to {v}V, termination resistor", i, fit[0][1], [v-5, v+1])
+            self.make_plot(csv_name, f"0 to {v}V, termination resistor", i, fit[0][1], [v-5, v+5])
 
             #Measure the ramp from positive voltage to 0 with 10k termination
             print(f"{self.prefix} --> Turning Channel {i} HV from {v}V to 0 with 10k termination")
@@ -377,7 +380,7 @@ class LDOmeasure:
             hv_results[i]["neg_open_on_fit"] = fit
             hv_results[i]["neg_open_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_open_I"] = self.c.get_current(i+8)
-            self.make_plot(csv_name, f"0 to -{v}V, open termination", i+8, fit[0][1], [v-5, v+1])
+            self.make_plot(csv_name, f"0 to -{v}V, open termination", i+8, fit[0][1], [v-5, v+5])
 
             #Measure the ramp from negative voltage to 0 with open termination
             print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with open termination")
@@ -406,7 +409,7 @@ class LDOmeasure:
             hv_results[i]["neg_term_on_fit"] = fit
             hv_results[i]["neg_term_V"] = self.c.get_voltage(i+8)
             hv_results[i]["neg_term_I"] = self.c.get_current(i+8)
-            self.make_plot(csv_name, f"0 to -{v}V, termination resistor", i+8, fit[0][1], [v-5, v+1])
+            self.make_plot(csv_name, f"0 to -{v}V, termination resistor", i+8, fit[0][1], [v-5, v+5])
 
             #Measure the ramp from 0 to negative voltage with 10k termination
             print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with 10k termination")

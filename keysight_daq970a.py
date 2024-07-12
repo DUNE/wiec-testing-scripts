@@ -74,7 +74,7 @@ class Keysight970A:
 
         #Sets the sample rate a little slower for accuracy, whether in low power mode or not, and units to use
         self.keysight.write(f"SENSe:TEMPerature:NPLCycles {self.json_data['keysight970a_rtd_NPLcycles']},({self.rtd_ch_list})")
-        self.keysight.write(f"SENSe:TEMPerature:TRANsducer:FRTD:POWer:LIMit:STATe {self.json_data['keysight970a_rtd_LowPower']},({self.rtd_ch_list})")
+        self.keysight.write(f"SENSe:TEMPerature:TRANsducer:RTD:POWer:LIMit:STATe {self.json_data['keysight970a_rtd_LowPower']},({self.rtd_ch_list})")
         self.keysight.write(f"UNIT:TEMPerature {self.json_data['keysight970a_rtd_units']},({self.rtd_ch_list})")
         self.keysight.write("FORMat:READing:CHANnel ON")
 
@@ -83,7 +83,7 @@ class Keysight970A:
     def initialize_resistance(self):
         self.keysight.write(f"CONFigure:RESistance AUTO,DEF,({self.heater_ch_list})")
         self.keysight.write(f"SENSe:RESistance:NPLCycles {self.json_data['keysight970a_heater_NPLcycles']},({self.heater_ch_list})")
-        self.keysight.write(f"SENSe:FRESistance:POWer:LIMit:STATe {self.json_data['keysight970a_heater_LowPower']},({self.heater_ch_list})")
+        self.keysight.write(f"SENSe:RESistance:POWer:LIMit:STATe {self.json_data['keysight970a_heater_LowPower']},({self.heater_ch_list})")
         self.keysight.write(f"SENSe:RESistance:OCOMpensated {self.json_data['keysight970a_heater_ocomp']},({self.heater_ch_list})")
         self.keysight.write("FORMat:READing:CHANnel ON")
 
