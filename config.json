@@ -32,6 +32,13 @@
 "hv_tau_max": 0.03,
 "hv_tau_min": 0.01,
 
+"channels_to_test": [0],
+
+"pcb_ch_0_pos": 3,
+"pcb_ch_0_neg": 15,
+"pcb_ch_1_pos": 1,
+"pcb_ch_1_neg": 9,
+
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
 "caenR8033DM_current_range": 1,
