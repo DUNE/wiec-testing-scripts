@@ -314,7 +314,7 @@ class LDOmeasure:
             v = self.json_data['caenR8033DM_open_voltage']
             self.c.set_HV_value(pos_ch, v)
             print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with open termination")
-            self.k.set_relay(1 << i, 1 << i)
+            self.k.set_relay(0, 1 << i)
             self.c.turn_on(pos_ch)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
@@ -343,7 +343,7 @@ class LDOmeasure:
             v = self.json_data['caenR8033DM_term_voltage']
             self.c.set_HV_value(pos_ch, v)
             print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with 10k termination")
-            self.k.set_relay(1 << i, 0)
+            self.k.set_relay(0, 0)
             self.c.turn_on(pos_ch)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])
@@ -372,7 +372,7 @@ class LDOmeasure:
             v = self.json_data['caenR8033DM_open_voltage']
             self.c.set_HV_value(neg_ch, v)
             print(f"{self.prefix} --> Turning Channel {neg_ch} HV from 0 to -{v}V with open termination")
-            self.k.set_relay(0, 1 << i)
+            self.k.set_relay(1 << i, 1 << i)
             self.c.turn_on(neg_ch)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_stability_wait'])
@@ -401,7 +401,7 @@ class LDOmeasure:
             v = self.json_data['caenR8033DM_term_voltage']
             self.c.set_HV_value(neg_ch, v)
             print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{v}V with 10k termination")
-            self.k.set_relay(0, 0)
+            self.k.set_relay(1 << i, 0)
             self.c.turn_on(neg_ch)
             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
             time.sleep(self.json_data['hv_termination_wait'])

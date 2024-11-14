@@ -150,7 +150,7 @@ class Keysight970A:
         #Split commas into lists
         sep = resp.split(",")
         results = {}
-        for i in range(0,(self.num_rtds * 2)-1,2):
+        for i in range(0,(self.num_fans * 2)-1,2):
             results[self.fan_convert[f"{sep[i+1]}"]] = float(sep[i])
 
         return results

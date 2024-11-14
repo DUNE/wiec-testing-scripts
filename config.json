@@ -34,8 +34,8 @@
 
 "channels_to_test": [0],
 
-"pcb_ch_0_pos": 3,
-"pcb_ch_0_neg": 15,
+"pcb_ch_0_pos": 0,
+"pcb_ch_0_neg": 8,
 "pcb_ch_1_pos": 1,
 "pcb_ch_1_neg": 9,
 
@@ -77,11 +77,13 @@
 "keysight970a_heater_LowPower": "OFF",
 "keysight970a_heater_delay": 5.0,
 
-"keysight970a_fan_num": 4,
-"keysight970a_fan_ch1": 1,
-"keysight970a_fan_ch2": 2,
+"keysight970a_fan_num": 6,
+"keysight970a_fan_ch1": 19,
+"keysight970a_fan_ch2": 20,
 "keysight970a_fan_ch3": 3,
 "keysight970a_fan_ch4": 4,
+"keysight970a_fan_ch5": 1,
+"keysight970a_fan_ch6": 2,
 
 "keysight970a_fan_NPLcycles": 10,
 "keysight970a_fan_autozero": "ON",
