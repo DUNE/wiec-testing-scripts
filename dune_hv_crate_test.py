@@ -304,132 +304,170 @@ class LDOmeasure:
         hv_results = {}
         self.r1.power("ON", "hvpullup")
         self.r1.power("ON", "hvpullup2")
-        self.hv_test_result = True
-        for i in self.json_data['channels_to_test']:
-            pos_ch = self.json_data[f"pcb_ch_{i}_pos"]
-            neg_ch = self.json_data[f"pcb_ch_{i}_neg"]
-            hv_results[i] = {}
+        self.hv_test_result = True        
+        # for i in self.json_data['channels_to_test']:
+        chs_to_test = self.json_data['channels_to_test']
+        pos_chs = []
+        neg_chs = []
+        for i in chs_to_test:
+            pos_chs.append(self.json_data[f"pcb_ch_{i}_pos"])
+            neg_chs.append(self.json_data[f"pcb_ch_{i}_neg"])
+        hv_results[i] = {}
 
-            #Measure the ramp from 0 to positive voltage with open termination
-            v = self.json_data['caenR8033DM_open_voltage']
+        #Measure the ramp from 0 to positive voltage with open termination
+        v = self.json_data['caenR8033DM_open_voltage']
+        relay_setting = 0
+        for i in chs_to_test:
+            relay_setting = relay_setting | (1 << i)  
+        for pos_ch in pos_chs:
             self.c.set_HV_value(pos_ch, v)
             print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with open termination")
-            self.k.set_relay(0, 1 << i)
-            self.c.turn_on(pos_ch)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
-
-            csv_name = f"{self.test_name}_ch{i}_pos_open_on.csv"
-            self.record_hv_data(csv_name)
+            
+        #self.k.set_relay(0, 1 << i) #<- how does this work?
+        self.k.set_relay(0, relay_setting)
+        self.c.turn_on(pos_chs)
+        print(f"{self.prefix} --> HV reached max values, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+        time.sleep(self.json_data['hv_stability_wait']) #may need to change for simul test?
+        
+        chs_string = ""
+        for i in chs_to_test:
+            chs_string = chs_string + str(i) + "_"
+            
+        csv_name = f"{self.test_name}_chs{chs_string}pos_open_on.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            pos_ch = self.json_data[f"pcb_ch_{i}_pos"]
             fit = self.hv_curve_fit(csv_name, pos_ch, on = True, term = False)
             hv_results[i]["pos_open_on_fit"] = fit
             hv_results[i]["pos_open_V"] = self.c.get_voltage(pos_ch)
-            hv_results[i]["pos_open_I"] = self.c.get_current(pos_ch)
+            hv_results[i]["pos_open_I"] = self.c.get_current(pos_ch)            
             self.make_plot(csv_name, f"0 to {v}V, open termination", pos_ch, fit[0][1], [v-5, v+5])
 
-            #Measure the ramp from positive voltage to 0 with open termination
+        #Measure the ramp from positive voltage to 0 with open termination
+        for pos_ch in pos_chs:
             print(f"{self.prefix} --> Turning Channel {pos_ch} HV from {v}V to 0 with open termination")
-            self.c.turn_off(pos_ch)
-            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            # time.sleep(self.json_data['hv_stability_wait'])
+        self.c.turn_off(pos_chs)
+        # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+        # time.sleep(self.json_data['hv_stability_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_pos_open_off.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_pos_open_off.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            pos_ch = self.json_data[f"pcb_ch_{i}_pos"]
             fit = self.hv_curve_fit(csv_name, pos_ch, on = False, term = False)
             hv_results[i]["pos_open_off_fit"] = fit
             self.make_plot(csv_name, f"{v} to 0V, open termination", pos_ch, fit[0][1])
 
-            #Measure the ramp from 0 to positive voltage with 10k termination
-            v = self.json_data['caenR8033DM_term_voltage']
+        #Measure the ramp from 0 to positive voltage with 10k termination
+        v = self.json_data['caenR8033DM_term_voltage']
+        for pos_ch in pos_chs:
             self.c.set_HV_value(pos_ch, v)
             print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with 10k termination")
-            self.k.set_relay(0, 0)
-            self.c.turn_on(pos_ch)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_termination_wait'])
+        self.k.set_relay(0, 0)
+        self.c.turn_on(pos_chs)
+        print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+        time.sleep(self.json_data['hv_termination_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_pos_term_on.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_pos_term_on.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            pos_ch = self.json_data[f"pcb_ch_{i}_pos"]        
             fit = self.hv_curve_fit(csv_name, pos_ch, on = True, term = True)
             hv_results[i]["pos_term_on_fit"] = fit
             hv_results[i]["pos_term_V"] = self.c.get_voltage(pos_ch)
             hv_results[i]["pos_term_I"] = self.c.get_current(pos_ch)
             self.make_plot(csv_name, f"0 to {v}V, termination resistor", pos_ch, fit[0][1], [v-5, v+5])
 
-            #Measure the ramp from positive voltage to 0 with 10k termination
+        #Measure the ramp from positive voltage to 0 with 10k termination
+        for pos_ch in pos_chs:
             print(f"{self.prefix} --> Turning Channel {pos_ch} HV from {v}V to 0 with 10k termination")
-            self.c.turn_off(pos_ch)
-            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            # time.sleep(self.json_data['hv_stability_wait'])
+        self.c.turn_off(pos_chs)
+        # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+        # time.sleep(self.json_data['hv_stability_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_pos_term_off.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_pos_term_off.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            pos_ch = self.json_data[f"pcb_ch_{i}_pos"]           
             fit = self.hv_curve_fit(csv_name, pos_ch, on = False, term = True)
             hv_results[i]["pos_term_off_fit"] = fit
             self.make_plot(csv_name, f"{v} to 0V, termination resistor", pos_ch, fit[0][1])
 
-            #Measure the ramp from 0 to negative voltage with open termination
-            v = self.json_data['caenR8033DM_open_voltage']
+        #Measure the ramp from 0 to negative voltage with open termination
+        v = self.json_data['caenR8033DM_open_voltage']
+        for neg_ch in neg_chs:
             self.c.set_HV_value(neg_ch, v)
             print(f"{self.prefix} --> Turning Channel {neg_ch} HV from 0 to -{v}V with open termination")
-            self.k.set_relay(1 << i, 1 << i)
-            self.c.turn_on(neg_ch)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
+        self.k.set_relay(relay_setting, relay_setting)
+        self.c.turn_on(neg_chs)
+        print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+        time.sleep(self.json_data['hv_stability_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_neg_open_on.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_neg_open_on.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            neg_ch = self.json_data[f"pcb_ch_{i}_neg"]
             fit = self.hv_curve_fit(csv_name, neg_ch, on = True, term = False)
             hv_results[i]["neg_open_on_fit"] = fit
             hv_results[i]["neg_open_V"] = self.c.get_voltage(neg_ch)
             hv_results[i]["neg_open_I"] = self.c.get_current(neg_ch)
             self.make_plot(csv_name, f"0 to -{v}V, open termination", neg_ch, fit[0][1], [v-5, v+5])
 
-            #Measure the ramp from negative voltage to 0 with open termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with open termination")
-            self.c.turn_off(neg_ch)
-            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            # time.sleep(self.json_data['hv_stability_wait'])
+        #Measure the ramp from negative voltage to 0 with open termination
+        for neg_ch in neg_chs:
+            print(f"{self.prefix} --> Turning Channel {neg_ch} HV from -{v}V to 0 with open termination")
+        self.c.turn_off(neg_chs)
+        # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+        # time.sleep(self.json_data['hv_stability_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_neg_open_off.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_neg_open_off.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            neg_ch = self.json_data[f"pcb_ch_{i}_neg"]        
             fit = self.hv_curve_fit(csv_name, neg_ch, on = False, term = False)
             hv_results[i]["neg_open_off_fit"] = fit
             self.make_plot(csv_name, f"-{v} to 0V, open termination", neg_ch, fit[0][1])
 
-            #Measure the ramp from 0 to negative voltage with 10k termination
-            v = self.json_data['caenR8033DM_term_voltage']
+        #Measure the ramp from 0 to negative voltage with 10k termination
+        v = self.json_data['caenR8033DM_term_voltage']
+        for neg_ch in neg_chs:
             self.c.set_HV_value(neg_ch, v)
-            print(f"{self.prefix} --> Turning Channel {i} HV from 0 to -{v}V with 10k termination")
-            self.k.set_relay(1 << i, 0)
-            self.c.turn_on(neg_ch)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_termination_wait'])
+            print(f"{self.prefix} --> Turning Channel {neg_ch} HV from 0 to -{v}V with 10k termination")
+        self.k.set_relay(relay_setting, 0)
+        self.c.turn_on(neg_chs)
+        print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+        time.sleep(self.json_data['hv_termination_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_neg_term_on.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_neg_term_on.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            neg_ch = self.json_data[f"pcb_ch_{i}_neg"]          
             fit = self.hv_curve_fit(csv_name, neg_ch, on = True, term = True)
             hv_results[i]["neg_term_on_fit"] = fit
             hv_results[i]["neg_term_V"] = self.c.get_voltage(neg_ch)
             hv_results[i]["neg_term_I"] = self.c.get_current(neg_ch)
             self.make_plot(csv_name, f"0 to -{v}V, termination resistor", neg_ch, fit[0][1], [v-5, v+5])
 
-            #Measure the ramp from 0 to negative voltage with 10k termination
-            print(f"{self.prefix} --> Turning Channel {i} HV from -{v}V to 0 with 10k termination")
-            self.c.turn_off(neg_ch)
-            # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            # time.sleep(self.json_data['hv_stability_wait'])
+        #Measure the ramp from 0 to negative voltage with 10k termination
+        for neg_ch in neg_chs:
+            print(f"{self.prefix} --> Turning Channel {neg_ch} HV from -{v}V to 0 with 10k termination")
+        self.c.turn_off(neg_chs)
+        # print(f"{self.prefix} --> HV turned off, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+        # time.sleep(self.json_data['hv_stability_wait'])
 
-            csv_name = f"{self.test_name}_ch{i}_neg_term_off.csv"
-            self.record_hv_data(csv_name)
+        csv_name = f"{self.test_name}_ch{chs_string}_neg_term_off.csv"
+        self.record_hv_data(csv_name)
+        for i in chs_to_test:
+            neg_ch = self.json_data[f"pcb_ch_{i}_neg"]              
             fit = self.hv_curve_fit(csv_name, neg_ch, on = False, term = True)
             hv_results[i]["neg_term_off_fit"] = fit
             self.make_plot(csv_name, f"-{v} to 0V, termination resistor", neg_ch, fit[0][1])
 
-            self.r1.power("OFF", "hvpullup")
-            self.r1.power("OFF", "hvpullup2")
+        self.r1.power("OFF", "hvpullup")
+        self.r1.power("OFF", "hvpullup2")
 
-            #Voltage is in volts, current is in microamps, R in Mohms
+        #Voltage is in volts, current is in microamps, R in Mohms
+        for i in chs_to_test:
             try:
                 hv_results[i]["pos_open_R"] = float(hv_results[i]["pos_open_V"])/float(hv_results[i]["pos_open_I"])
             except:
