@@ -69,6 +69,7 @@ class CAENR8033DM_WRAPPER:
         #Make it work for both single channels and lists
         if (not isinstance(ch, list)):
             ch = [ch]
+        if (not isinstance(status, list)):
             status = [status]
         #Check if there's any error in the channels before the power is touched
         for num,i in enumerate(ch):
@@ -209,27 +210,27 @@ class CAENR8033DM_WRAPPER:
             print(f"{self.prefix} --> Error code {hex(val)}")
             if (val & 0x8):
                 sys.exit(f"{self.prefix} --> Channel {ch} is overcurrent")
-            elif (val & 0x10):
+            if (val & 0x10):
                 sys.exit(f"{self.prefix} --> Channel {ch} is overvoltage")
-            elif (val & 0x20):
+            if (val & 0x20):
                 sys.exit(f"{self.prefix} --> Channel {ch} is undervoltage")
-            elif (val & 0x40):
+            if (val & 0x40):
                 sys.exit(f"{self.prefix} --> Channel {ch} has tripped due to overcurrent")
-            elif (val & 0x80):
+            if (val & 0x80):
                 sys.exit(f"{self.prefix} --> Channel {ch} is overpowered")
-            elif (val & 0x100):
+            if (val & 0x100):
                 sys.exit(f"{self.prefix} --> Channel {ch} has a temperature warning")
-            elif (val & 0x200):
+            if (val & 0x200):
                 sys.exit(f"{self.prefix} --> Channel {ch} is over temperature")
-            elif (val & 0x400):
+            if (val & 0x400):
                 sys.exit(f"{self.prefix} --> Channel {ch}'s switch is in the kill state")
-            elif (val & 0x800):
+            if (val & 0x800):
                 sys.exit(f"{self.prefix} --> Channel {ch}'s interlock is tripped")
-            elif (val & 0x1000):
+            if (val & 0x1000):
                 sys.exit(f"{self.prefix} --> Channel {ch}'s switch is in the off state")
-            elif (val & 0x2000):
+            if (val & 0x2000):
                 sys.exit(f"{self.prefix} --> Channel {ch} has a general failure")
-            elif (val & 0x4000):
+            if (val & 0x4000):
                 sys.exit(f"{self.prefix} --> Channel {ch}'s switch is on but in local mode")
             elif (val & 0x20):
                 sys.exit(f"{self.prefix} --> Channel {ch}'s voltage exceeds the hardware max")

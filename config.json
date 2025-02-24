@@ -32,7 +32,8 @@
 "hv_tau_max": 0.03,
 "hv_tau_min": 0.01,
 
-"channels_to_test": [0],
+"channels_to_test": [7, 6, 5, 4, 3, 2, 1, 0],
+"simultaneous_test": "True",
 
 "pcb_ch_0_pos": 0,
 "pcb_ch_0_neg": 8,
@@ -51,13 +52,14 @@
 "pcb_ch_7_pos": 7,
 "pcb_ch_7_neg": 15,
 
+
 "caenR8033DM": "169.254.12.34",
 "caenR8033DM_driver": "libcaenhvwrapper.so.6.3",
 "caenR8033DM_current_range": 1,
 "caenR8033DM_overcurrent": 3000.0,
 "caenR8033DM_power_down_mode": 1,
-"caenR8033DM_ramp_down": 250.0,
-"caenR8033DM_ramp_up": 250.0,
+"caenR8033DM_ramp_down": 10.0,
+"caenR8033DM_ramp_up": 10.0,
 "caenR8033DM_trip_time": 10.0,
 "caenR8033DM_open_voltage": 2000,
 "caenR8033DM_term_voltage": 20,
