@@ -19,6 +19,8 @@ from matplotlib.ticker import MultipleLocator
 import numpy as np
 from scipy.optimize import curve_fit
 
+import traceback
+
 class LDOmeasure:
     def __init__(self, config_file = None, name = None):
         self.prefix = "DUNE HV Crate Tester"
@@ -28,8 +30,9 @@ class LDOmeasure:
             return
         with open(config_file, "r") as jsonfile:
             self.json_data = json.load(jsonfile)
-        self.rm = pyvisa.ResourceManager('@py')
-
+        self.rm = pyvisa.ResourceManager('@py')      
+        
+        
         #Initialize all instruments first so that you don't waste time with input if something is not connected
         self.c = CAENR8033DM_WRAPPER(self.json_data)
         self.k = Keysight970A(self.rm, self.json_data)
@@ -73,6 +76,7 @@ class LDOmeasure:
             self.wb.save(self.path_to_spreadsheet)
             self.heater_test()
             self.wb.save(self.path_to_spreadsheet)
+            
             self.hv_test() #add'l specific exceptions are handled within 
         except:
             print("Detected exception, powering off all devices first.")
@@ -329,21 +333,18 @@ class LDOmeasure:
             	self.hv_test_single(single_test, hv_results)
             	single_test_done = True
             except (ConnectionResetError, BrokenPipeError) as e:
-            	print("Connection broken, attempting to reset...")	
-            	self.r0.rigol.close()
-            	self.r0 = RigolDP832A(self.rm, self.json_data, 0)
-            	self.r0.setup_fan()
-            	self.r0.setup_heater_supply()
-            	self.r0.setup_heater_switch()
-            
-            	self.r1.rigol.close()
-            	self.r1 = RigolDP832A(self.rm, self.json_data, 1)
-            	self.r1.setup_hvpullup()
-            	self.r1.setup_hvpullup2()
-            	self.r1.setup_fanread()  
+            	print(traceback.format_exc())
+            	print("Connection broken, attempting to reset...")
+            	self.c.turn_off(list(range(16)), emergency=True)             	    
+            	self.reset_pyvisa_connections()   
+            	self.r1.power("ON", "hvpullup")
+            	self.r1.power("ON", "hvpullup2")   
             except SystemExit as e:
             	self.emergency_shutoff() 
-            	print("Detecting exception",e,"but shutting off and continuing...")          	
+            	print(traceback.format_exc())
+            	print("Detecting exception",e,"but shutting off and continuing...")      
+            	self.r1.power("ON", "hvpullup")
+            	self.r1.power("ON", "hvpullup2")              	    	
 
             if not single_test_done:
             	try:
@@ -444,13 +445,23 @@ class LDOmeasure:
                 relay_setting = relay_setting | (1 << i)  
             for pos_ch in pos_chs:
                 self.c.set_HV_value(pos_ch, v)
-                print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with open termination")
-            
+                print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with open termination")            
             #self.k.set_relay(0, 1 << i) #<- how does this work?
-            self.k.set_relay(0, relay_setting)
-            self.c.turn_on(pos_chs)
-            print(f"{self.prefix} --> HV reached max values, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait']) #may need to change for simul test?
+            ramp_done = False
+            while not ramp_done:
+                try:
+            	    self.k.set_relay(0, relay_setting)
+            	    self.c.turn_on(pos_chs)
+            	    print(f"{self.prefix} --> HV reached max values, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            	    ramp_done = True
+            	    time.sleep(self.json_data['hv_stability_wait']) #may need to change for simul test?
+                except (ConnectionResetError, BrokenPipeError) as e:
+            	    print(traceback.format_exc())
+            	    print("Connection broken, attempting to reset...")
+            	    self.c.turn_off(list(range(16)), emergency=True)             	    
+            	    self.reset_pyvisa_connections()   
+            	    self.r1.power("ON", "hvpullup")
+            	    self.r1.power("ON", "hvpullup2")            	             	         
             
             chs_string = ""
             for i in chs_to_test:
@@ -465,6 +476,8 @@ class LDOmeasure:
                 hv_results[i]["pos_open_V"] = self.c.get_voltage(pos_ch)
                 hv_results[i]["pos_open_I"] = self.c.get_current(pos_ch)            
                 self.make_plot(csv_name, f"0 to {v}V, open termination", pos_ch, fit[0][1], [v-5, v+5])
+                
+            ###################
 
             #Measure the ramp from positive voltage to 0 with open termination
             for pos_ch in pos_chs:
@@ -481,15 +494,29 @@ class LDOmeasure:
                 hv_results[i]["pos_open_off_fit"] = fit
                 self.make_plot(csv_name, f"{v} to 0V, open termination", pos_ch, fit[0][1])
 
+            ###################
+
             #Measure the ramp from 0 to positive voltage with 10k termination
             v = self.json_data['caenR8033DM_term_voltage']
             for pos_ch in pos_chs:
                 self.c.set_HV_value(pos_ch, v)
                 print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with 10k termination")
-            self.k.set_relay(0, 0)
-            self.c.turn_on(pos_chs)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_termination_wait'])
+            ramp_done = False
+            while not ramp_done:
+                try:
+            	    self.k.set_relay(0, 0)
+            	    self.c.turn_on(pos_chs)
+            	    ramp_done = True
+            	    print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+            	    time.sleep(self.json_data['hv_termination_wait'])                            
+                except (ConnectionResetError, BrokenPipeError) as e:
+            	    print(traceback.format_exc())
+            	    print("Connection broken, attempting to reset...")
+            	    self.c.turn_off(list(range(16)), emergency=True)             	    
+            	    self.reset_pyvisa_connections()   
+            	    self.r1.power("ON", "hvpullup")
+            	    self.r1.power("ON", "hvpullup2")               
+
 
             csv_name = f"{self.test_name}_ch{chs_string}_pos_term_on.csv"
             self.record_hv_data(csv_name)
@@ -501,6 +528,8 @@ class LDOmeasure:
                 hv_results[i]["pos_term_I"] = self.c.get_current(pos_ch)
                 self.make_plot(csv_name, f"0 to {v}V, termination resistor", pos_ch, fit[0][1], [v-5, v+5])
 
+            ###################            
+            
             #Measure the ramp from positive voltage to 0 with 10k termination
             for pos_ch in pos_chs:
                 print(f"{self.prefix} --> Turning Channel {pos_ch} HV from {v}V to 0 with 10k termination")
@@ -516,15 +545,28 @@ class LDOmeasure:
                 hv_results[i]["pos_term_off_fit"] = fit
                 self.make_plot(csv_name, f"{v} to 0V, termination resistor", pos_ch, fit[0][1])
 
+            ###################            
+            
             #Measure the ramp from 0 to negative voltage with open termination
             v = self.json_data['caenR8033DM_open_voltage']
             for neg_ch in neg_chs:
                 self.c.set_HV_value(neg_ch, v)
                 print(f"{self.prefix} --> Turning Channel {neg_ch} HV from 0 to -{v}V with open termination")
-            self.k.set_relay(relay_setting, relay_setting)
-            self.c.turn_on(neg_chs)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_stability_wait'])
+            ramp_done = False
+            while not ramp_done:
+                try:
+            	    self.k.set_relay(relay_setting, relay_setting)
+            	    self.c.turn_on(neg_chs)
+            	    ramp_done = True
+            	    print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
+            	    time.sleep(self.json_data['hv_stability_wait'])                         
+                except (ConnectionResetError, BrokenPipeError) as e:
+            	    print(traceback.format_exc())
+            	    print("Connection broken, attempting to reset...")
+            	    self.c.turn_off(list(range(16)), emergency=True)             	    
+            	    self.reset_pyvisa_connections()   
+            	    self.r1.power("ON", "hvpullup")
+            	    self.r1.power("ON", "hvpullup2")                  
 
             csv_name = f"{self.test_name}_ch{chs_string}_neg_open_on.csv"
             self.record_hv_data(csv_name)
@@ -536,6 +578,8 @@ class LDOmeasure:
                 hv_results[i]["neg_open_I"] = self.c.get_current(neg_ch)
                 self.make_plot(csv_name, f"0 to -{v}V, open termination", neg_ch, fit[0][1], [v-5, v+5])
 
+            ###################            
+            
             #Measure the ramp from negative voltage to 0 with open termination
             for neg_ch in neg_chs:
                 print(f"{self.prefix} --> Turning Channel {neg_ch} HV from -{v}V to 0 with open termination")
@@ -551,15 +595,29 @@ class LDOmeasure:
                 hv_results[i]["neg_open_off_fit"] = fit
                 self.make_plot(csv_name, f"-{v} to 0V, open termination", neg_ch, fit[0][1])
 
+            ###################
+            
             #Measure the ramp from 0 to negative voltage with 10k termination
             v = self.json_data['caenR8033DM_term_voltage']
             for neg_ch in neg_chs:
                 self.c.set_HV_value(neg_ch, v)
                 print(f"{self.prefix} --> Turning Channel {neg_ch} HV from 0 to -{v}V with 10k termination")
-            self.k.set_relay(relay_setting, 0)
-            self.c.turn_on(neg_chs)
-            print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
-            time.sleep(self.json_data['hv_termination_wait'])
+            ramp_done = False
+            while not ramp_done:
+                try:
+            	    self.k.set_relay(relay_setting, 0)
+            	    self.c.turn_on(neg_chs)
+            	    ramp_done = True
+            	    print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+            	    time.sleep(self.json_data['hv_termination_wait'])                        
+                except (ConnectionResetError, BrokenPipeError) as e:
+            	    print(traceback.format_exc())
+            	    print("Connection broken, attempting to reset...")
+            	    self.c.turn_off(list(range(16)), emergency=True)             	    
+            	    self.reset_pyvisa_connections()   
+            	    self.r1.power("ON", "hvpullup")
+            	    self.r1.power("ON", "hvpullup2")               
+
 
             csv_name = f"{self.test_name}_ch{chs_string}_neg_term_on.csv"
             self.record_hv_data(csv_name)
@@ -571,6 +629,8 @@ class LDOmeasure:
                 hv_results[i]["neg_term_I"] = self.c.get_current(neg_ch)
                 self.make_plot(csv_name, f"0 to -{v}V, termination resistor", neg_ch, fit[0][1], [v-5, v+5])
 
+            ###################            
+            
             #Measure the ramp from 0 to negative voltage with 10k termination
             for neg_ch in neg_chs:
                 print(f"{self.prefix} --> Turning Channel {neg_ch} HV from -{v}V to 0 with 10k termination")
@@ -586,17 +646,43 @@ class LDOmeasure:
                 hv_results[i]["neg_term_off_fit"] = fit
                 self.make_plot(csv_name, f"-{v} to 0V, termination resistor", neg_ch, fit[0][1])
 
-            self.r1.power("OFF", "hvpullup")
-            self.r1.power("OFF", "hvpullup2")
+            ###################            
+            relay_done = False
+            while not relay_done:
+                try:
+            	    self.r1.power("OFF", "hvpullup")
+            	    self.r1.power("OFF", "hvpullup2") 
+            	    relay_done = True                     
+                except (ConnectionResetError, BrokenPipeError) as e:
+            	    print(traceback.format_exc())
+            	    print("Connection broken, attempting to reset...")           	    
+            	    self.reset_pyvisa_connections()              
+
             
     def emergency_shutoff(self):
-        self.c.turn_off(list(range(16))) #Turn off HV channels
+        self.c.turn_off(list(range(16)), emergency=True) #Turn off HV channels
         self.r0.power("OFF", "heat_supply") #Turn off fan and heater power
         self.r0.power("OFF", "heat_switch")
         self.r0.power("OFF", "fan")
         self.r1.power("OFF", "fanread")
         self.k.set_relay(0, 0) #Probably not necessary    
-	
+
+    def reset_pyvisa_connections(self):	
+        self.r0.rigol.close()
+        self.r0 = RigolDP832A(self.rm, self.json_data, 0)
+        self.r0.setup_fan()
+        self.r0.setup_heater_supply()
+        self.r0.setup_heater_switch()
+            
+        self.r1.rigol.close()
+        self.r1 = RigolDP832A(self.rm, self.json_data, 1)
+        self.r1.setup_hvpullup()
+        self.r1.setup_hvpullup2()
+        self.r1.setup_fanread()  
+            	
+        self.k.keysight.close()
+        self.k = Keysight970A(self.rm, self.json_data)    
+    	
     def record_hv_data(self, name):
         data = []
         cycle_start_time = time.time()
