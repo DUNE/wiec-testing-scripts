@@ -653,7 +653,7 @@ class LDOmeasure:
             	    self.r1.power("OFF", "hvpullup")
             	    self.r1.power("OFF", "hvpullup2") 
             	    relay_done = True                     
-                except (ConnectionResetError, BrokenPipeError) as e:
+                except (ConnectionResetError, BrokenPipeError, pyvisa.errors.VisaIOError) as e:
             	    print(traceback.format_exc())
             	    print("Connection broken, attempting to reset...")           	    
             	    self.reset_pyvisa_connections()              

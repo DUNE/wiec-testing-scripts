@@ -32,7 +32,7 @@
 "hv_tau_max": 0.03,
 "hv_tau_min": 0.01,
 
-"channels_to_test": [2],
+"channels_to_test": [7],
 "simultaneous_test": "True",
 
 "pcb_ch_0_pos": 0,

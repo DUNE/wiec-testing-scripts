@@ -99,11 +99,13 @@ class CAENR8033DM_WRAPPER:
             #print(self.get_channel_status(ch))
             #print(self.caen.get_channel_parameter_value(ch, "Pw"))
             if (going_up):
-                if (self.get_channel_status(ch) == 1 and (self.get_HV_value(ch) - self.get_voltage(ch)) < 100 ):
+                #if (self.get_channel_status(ch) == 1 and (self.get_HV_value(ch) - self.get_voltage(ch)) < 100 ):
+                if self.get_channel_status(ch) == 1:
                     break
                 print(f"{self.prefix} --> Channel {ch} is ramping up to {self.get_HV_value(ch)} V, currently at {self.get_voltage(ch)} V and {self.get_current(ch)} uA ({secs_passed} seconds passed)")
             else:
-                if (self.get_channel_status(ch) == 0 and self.get_voltage(ch) < 20) :
+                #if (self.get_channel_status(ch) == 0 and self.get_voltage(ch) < 20) :
+                if self.get_channel_status(ch) == 0:
                     break
                 print(f"{self.prefix} --> Channel {ch} is ramping down to turn off, currently at {self.get_voltage(ch)} V and {self.get_current(ch)} uA ({secs_passed} seconds passed) ")
             time.sleep(self.ramp_wait)
