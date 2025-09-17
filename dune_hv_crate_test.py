@@ -21,6 +21,8 @@ from scipy.optimize import curve_fit
 
 import traceback
 
+#from KeysightE36312A_interfacing import KeysightE36312A#debugging
+
 class LDOmeasure:
     def __init__(self, config_file = None, name = None):
         self.prefix = "DUNE HV Crate Tester"
@@ -44,7 +46,7 @@ class LDOmeasure:
         self.r0.setup_heater_supply()
         self.r0.setup_heater_switch()
 
-        self.r1 = RigolDP832A(self.rm, self.json_data, 1)
+        self.r1 = RigolDP832A(self.rm, self.json_data, 1)#KeysightE36312A(self.rm, self.json_data, 1)#
         self.r1.setup_hvpullup()
         self.r1.setup_hvpullup2()
         self.r1.setup_fanread()
@@ -72,6 +74,7 @@ class LDOmeasure:
         
 
         try:
+            #skipped for debug:
             self.fan_test()
             self.wb.save(self.path_to_spreadsheet)
             self.heater_test()
@@ -471,6 +474,10 @@ class LDOmeasure:
             ramp_done = False
             while not ramp_done:
                 try:
+            	    ##debug
+            	    #self.k.set_relay(255,255)
+            	    #input("Press enter to continue")
+
             	    self.k.set_relay(0, relay_setting)
             	    #input("Relays open, HV not on yet")
             	    self.c.turn_on(pos_chs)
@@ -633,6 +640,38 @@ class LDOmeasure:
                 self.c.set_HV_value(neg_ch, v)
                 print(f"{self.prefix} --> Turning Channel {neg_ch} HV from 0 to -{v}V with 10k termination")
             ramp_done = False
+            # while not ramp_done:
+            #     try:
+            # 	    self.k.set_relay(relay_setting, 0)
+            # 	    for neg_ch in neg_chs:
+            #             self.c.turn_on(neg_ch)
+            #             print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+            #             time.sleep(self.json_data['hv_termination_wait'])
+            #
+            #             #Check that relay has fired correctly
+            #             current = self.c.get_current(neg_ch, print_meas=True)
+            #             if current < 10: #uA
+            #                 raise ValueError("Current too low for 10k termination mode")
+            # 	    ramp_done = True
+            #     except (ConnectionResetError, BrokenPipeError) as e:
+            # 	    print(traceback.format_exc())
+            # 	    print("Connection broken, attempting to reset...")
+            # 	    self.c.turn_off(list(range(16)), emergency=True)
+            # 	    self.reset_pyvisa_connections()
+            # 	    self.r1.power("ON", "hvpullup")
+            # 	    self.r1.power("ON", "hvpullup2")
+            #     except ValueError as e:
+            #         print(e)
+            #         #try block will run again
+            #         self.c.turn_off(neg_chs)
+            #         print("Resetting relays")
+            #         #self.k.keysight.close()
+            #         #self.k = Keysight970A(self.rm, self.json_data)
+            #         #time.sleep(1)
+            #         self.k.set_relay(0, relay_setting)
+            #         time.sleep(1)
+            #         print("Trying to fire relay again")
+            #         #try block will run again
             while not ramp_done:
                 try:
             	    self.k.set_relay(relay_setting, 0)
@@ -642,27 +681,54 @@ class LDOmeasure:
                         time.sleep(self.json_data['hv_termination_wait'])
 
                         #Check that relay has fired correctly
-                        current = self.c.get_current(neg_ch, print_meas=True)
+                        for i in range(10):
+                            current = self.c.get_current(neg_ch, print_meas=True)
+                            time.sleep(5)
                         if current < 10: #uA
+                            #input("OPEN CIRCUIT DETECTED! Press enter to continue:")
                             raise ValueError("Current too low for 10k termination mode")
             	    ramp_done = True
                 except (ConnectionResetError, BrokenPipeError) as e:
             	    print(traceback.format_exc())
             	    print("Connection broken, attempting to reset...")
-            	    self.c.turn_off(list(range(16)), emergency=True)             	    
-            	    self.reset_pyvisa_connections()   
+            	    self.c.turn_off(list(range(16)), emergency=True)
+            	    self.reset_pyvisa_connections()
             	    self.r1.power("ON", "hvpullup")
             	    self.r1.power("ON", "hvpullup2")
                 except ValueError as e:
                     print(e)
-                    #try block will run again
+                    #print("Positive channel voltages:", self.c.get_current(pos_chs))
+
                     self.c.turn_off(neg_chs)
+
+                    pullups_ok = False
+                    while not pullups_ok:
+                        try:
+                            hvv = self.r1.get_voltage("hvpullup")
+                            hv2v = self.r1.get_voltage("hvpullup2")
+                            if hvv >= 18 and hv2v >= 18: #check if they are on
+                                pullups_ok = True
+                            else:
+                                print("Resetting and power cycling pullup")
+                                print(hvv, hv2v)
+                                raise ValueError("")
+                        except Exception as e:
+                            print(e)
+                            try:
+                                self.reset_pullup_rigol_and_power_on()
+                                time.sleep(5)
+                            except Exception as e:
+                                time.sleep(5)
+                                pass #run again
+                    # self.reset_pyvisa_connections()
+                    # self.r1.power("ON", "hvpullup")
+                    # self.r1.power("ON", "hvpullup2")
+                    # time.sleep(1)
                     print("Resetting relays")
                     #self.k.keysight.close()
                     #self.k = Keysight970A(self.rm, self.json_data)
                     #time.sleep(1)
                     self.k.set_relay(0, relay_setting)
-                    time.sleep(1)
                     print("Trying to fire relay again")
                     #try block will run again
 
@@ -705,6 +771,7 @@ class LDOmeasure:
             
     def emergency_shutoff(self):
         self.c.turn_off(list(range(16)), emergency=True) #Turn off HV channels
+        #input("pause here")
         self.r0.power("OFF", "heat_supply") #Turn off fan and heater power
         self.r0.power("OFF", "heat_switch")
         self.r0.power("OFF", "fan")

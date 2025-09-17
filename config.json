@@ -33,8 +33,8 @@
 "hv_tau_max": 0.03,
 "hv_tau_min": 0.01,
 
-"channels_to_test": [7, 6, 5, 4, 3, 2, 1, 0],
-"simultaneous_test": "False",
+"channels_to_test": [0, 1, 2, 3, 4, 5, 6, 7],
+"simultaneous_test": "True",
 
 "pcb_ch_0_pos": 0,
 "pcb_ch_0_neg": 8,
@@ -62,7 +62,7 @@
 "caenR8033DM_ramp_down": 100.0,
 "caenR8033DM_ramp_up": 100.0,
 "caenR8033DM_trip_time": 10.0,
-"caenR8033DM_open_voltage": 2000,
+"caenR8033DM_open_voltage": 1500,
 "caenR8033DM_term_voltage": 20,
 
 "keysight970a": "TCPIP::169.254.9.69::INSTR",
@@ -127,14 +127,14 @@
 "rigol832a_heater_switch_overcurrent_en": "ON",
 
 "rigol832a_hvpullup_ch": 4,
-"rigol832a_hvpullup_voltage": 20.0,
-"rigol832a_hvpullup_current": 3.0,
+"rigol832a_hvpullup_voltage": 24.0,
+"rigol832a_hvpullup_current": 1.0,
 "rigol832a_hvpullup_overcurrent": 3.1,
 "rigol832a_hvpullup_overcurrent_en": "ON",
 
 "rigol832a_hvpullup2_ch": 5,
-"rigol832a_hvpullup2_voltage": 20.0,
-"rigol832a_hvpullup2_current": 3.0,
+"rigol832a_hvpullup2_voltage": 24.0,
+"rigol832a_hvpullup2_current": 1.0,
 "rigol832a_hvpullup2_overcurrent": 3.1,
 "rigol832a_hvpullup2_overcurrent_en": "ON",
 
