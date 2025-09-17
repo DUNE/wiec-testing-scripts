@@ -125,6 +125,9 @@ class LDOmeasure:
         self.datastore['json_path'] = self.json_output_file
 
         self.hv_cols = 12
+        self.fan_rd_first_col = 6
+        self.tc_res_first_col = self.fan_rd_first_col + 6
+        self.hv_res_first_col = self.tc_res_first_col + 8        
 
         if (os.path.isfile(self.path_to_spreadsheet)):
             self.wb = openpyxl.load_workbook(filename = self.path_to_spreadsheet)
@@ -152,36 +155,39 @@ class LDOmeasure:
             self.wb.add_named_style(self.pass_style)
 
             #Yes I'm using magic numbers, but I need to build the spreadsheet in a specific way, hopefully it's only done once here
+            ## goddammit Eric - Jillian
+
             self.ws.cell(row=2, column=1, value="Test Name").style = top_style
             self.ws.cell(row=2, column=2, value="Date").style = top_style
             self.ws.cell(row=2, column=3, value="Time").style = top_style
             self.ws.cell(row = 1, column = 4, value="Fan Test - V/I for power supplying all 4 fans, RD signal outputs").style = top_style
-            self.ws.merge_cells(start_row=1, start_column=4, end_row=1, end_column=9)
+            self.ws.merge_cells(start_row=1, start_column=4, end_row=1, end_column=self.tc_res_first_col-1)
             self.ws.cell(row=2, column=4, value="Supply Voltage").style = top_style
             self.ws.cell(row=2, column=5, value="Supply Current").style = top_style
-            for i in range(1,5):
-                self.ws.cell(row=2, column=5+i, value=f"Fan {i} RD").style = top_style
-                self.ws.cell(row=2, column=9+i, value=f"TC{i}_Resistance").style = top_style
-                self.ws.cell(row=2, column=13+i, value=f"TC{i}_Temp_Rise").style = top_style
+            for i in range(1,7):
+                self.ws.cell(row=2, column=self.fan_rd_first_col-1+i, value=f"Fan {i} RD").style = top_style
+            for i in range(1,5):    
+                self.ws.cell(row=2, column=self.tc_res_first_col-1+i, value=f"TC{i}_Resistance").style = top_style
+                self.ws.cell(row=2, column=self.tc_res_first_col-1+4+i, value=f"TC{i}_Temp_Rise").style = top_style
 
-            self.ws.cell(row=1, column=10, value="Heater Test - Results for each heating element and temperature rise after heating time").style = top_style
-            self.ws.merge_cells(start_row=1, start_column=10, end_row=1, end_column=17)
+            self.ws.cell(row=1, column=self.tc_res_first_col, value="Heater Test - Results for each heating element and temperature rise after heating time").style = top_style
+            self.ws.merge_cells(start_row=1, start_column=self.tc_res_first_col, end_row=1, end_column=self.hv_res_first_col-1)
 
-            self.ws.cell(row=1, column=18, value="HV Test - Results for each configuration. Resistance in units shown, time constant is tau (seconds) in a*e^(-tau * t)+c ").style = top_style
-            self.ws.merge_cells(start_row=1, start_column=18, end_row=1, end_column=21+(7*self.hv_cols))
+            self.ws.cell(row=1, column=self.hv_res_first_col, value="HV Test - Results for each configuration. Resistance in units shown, time constant is tau (seconds) in a*e^(-tau * t)+c ").style = top_style
+            self.ws.merge_cells(start_row=1, start_column=self.hv_res_first_col, end_row=1, end_column=self.hv_res_first_col+3+(7*self.hv_cols))
             for i in range(8):
-                self.ws.cell(row=2, column=18+(i*self.hv_cols), value=f"Ch{i}+ Open Res").style = top_style
-                self.ws.cell(row=2, column=19+(i*self.hv_cols), value=f"Ch{i}+ Open Fit On").style = top_style
-                self.ws.cell(row=2, column=20+(i*self.hv_cols), value=f"Ch{i}+ Open Fit Off").style = top_style
-                self.ws.cell(row=2, column=21+(i*self.hv_cols), value=f"Ch{i}+ 10k Res").style = top_style
-                self.ws.cell(row=2, column=22+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit On").style = top_style
-                self.ws.cell(row=2, column=23+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit Off").style = top_style
-                self.ws.cell(row=2, column=24+(i*self.hv_cols), value=f"Ch{i}- Open Res").style = top_style
-                self.ws.cell(row=2, column=25+(i*self.hv_cols), value=f"Ch{i}- Open Fit On").style = top_style
-                self.ws.cell(row=2, column=26+(i*self.hv_cols), value=f"Ch{i}- Open Fit Off").style = top_style
-                self.ws.cell(row=2, column=27+(i*self.hv_cols), value=f"Ch{i}- 10k Res").style = top_style
-                self.ws.cell(row=2, column=28+(i*self.hv_cols), value=f"Ch{i}- 10k Fit On").style = top_style
-                self.ws.cell(row=2, column=29+(i*self.hv_cols), value=f"Ch{i}- 10k Fit Off").style = top_style
+                self.ws.cell(row=2, column=self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}+ Open Res").style = top_style
+                self.ws.cell(row=2, column=1+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}+ Open Fit On").style = top_style
+                self.ws.cell(row=2, column=2+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}+ Open Fit Off").style = top_style
+                self.ws.cell(row=2, column=3+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}+ 10k Res").style = top_style
+                self.ws.cell(row=2, column=4+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit On").style = top_style
+                self.ws.cell(row=2, column=5+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}+ 10k Fit Off").style = top_style
+                self.ws.cell(row=2, column=6+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}- Open Res").style = top_style
+                self.ws.cell(row=2, column=7+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}- Open Fit On").style = top_style
+                self.ws.cell(row=2, column=8+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}- Open Fit Off").style = top_style
+                self.ws.cell(row=2, column=9+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}- 10k Res").style = top_style
+                self.ws.cell(row=2, column=10+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}- 10k Fit On").style = top_style
+                self.ws.cell(row=2, column=11+self.hv_res_first_col+(i*self.hv_cols), value=f"Ch{i}- 10k Fit Off").style = top_style
 
             #Expands each column to have the best width to fit everything
             column_letters = tuple(openpyxl.utils.get_column_letter(col_number + 1) for col_number in range(self.ws.max_column))
@@ -234,12 +240,12 @@ class LDOmeasure:
             self.datastore['Tests']['fan_current_test'] = "Fail"
             self.fan_test_result = False
 
-        for i in range(1,5):
+        for i in range(1,7):
             if ((fan_read_signal[i] < self.json_data["fan_read_max"]) and (fan_read_signal[i] > self.json_data["fan_read_min"])):
-                self.ws.cell(row=self.row, column=5+i, value=round(fan_read_signal[i], self.rounding_factor))
+                self.ws.cell(row=self.row, column=self.fan_rd_first_col-1+i, value=round(fan_read_signal[i], self.rounding_factor))
                 self.datastore['Tests'][f'fan_signal_test_{i}'] = "Pass"
             else:
-                self.ws.cell(row=self.row, column=5+i, value=round(fan_read_signal[i], self.rounding_factor)).style = "fail"
+                self.ws.cell(row=self.row, column=self.fan_rd_first_col-1+i, value=round(fan_read_signal[i], self.rounding_factor)).style = "fail"
                 self.fan_test_result = False
 
         self.datastore['fan_voltage'] = fan_voltage
@@ -258,10 +264,10 @@ class LDOmeasure:
         self.heat_test_result = True
         for i in range(1,5):
             if ((heater_resistance[i] < self.json_data["heating_element_max"]) and (heater_resistance[i] > self.json_data["heating_element_min"])):
-                self.ws.cell(row=self.row, column=9+i, value=round(heater_resistance[i], self.rounding_factor))
+                self.ws.cell(row=self.row, column=self.tc_res_first_col-1+i, value=round(heater_resistance[i], self.rounding_factor))
                 self.datastore['Tests'][f'heating_element_test_{i}'] = "Pass"
             else:
-                self.ws.cell(row=self.row, column=9+i, value=round(heater_resistance[i], self.rounding_factor)).style = "fail"
+                self.ws.cell(row=self.row, column=self.tc_res_first_col-1+i, value=round(heater_resistance[i], self.rounding_factor)).style = "fail"
                 self.datastore['Tests'][f'heating_element_test_{i}'] = "Fail"
                 self.heat_test_result = False
 
@@ -295,10 +301,10 @@ class LDOmeasure:
 
         for i in range(4):
             if ((temp_rise[i] < self.json_data["temp_increase_max"]) and (temp_rise[i] > self.json_data["temp_increase_min"])):
-                self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[i], self.rounding_factor))
+                self.ws.cell(row=self.row, column=self.tc_res_first_col+4+i, value=round(temp_rise[i], self.rounding_factor))
                 self.datastore['Tests'][f'temperature_rise_test_{i}'] = "Pass"
             else:
-                self.ws.cell(row=self.row, column=14+i, value=round(temp_rise[i], self.rounding_factor)).style = "fail"
+                self.ws.cell(row=self.row, column=self.tc_res_first_col+4+i, value=round(temp_rise[i], self.rounding_factor)).style = "fail"
                 self.datastore['Tests'][f'temperature_rise_test_{i}'] = "Fail"
                 self.heat_test_result = False
 
@@ -353,7 +359,17 @@ class LDOmeasure:
             	    print("Detected exception, powering off all devices first.")
             	    self.emergency_shutoff()       
             	    raise          
-            	         	      
+
+        relay_done = False
+        while not relay_done:
+            try:
+                self.r1.power("OFF", "hvpullup")
+                self.r1.power("OFF", "hvpullup2")
+                relay_done = True
+            except (ConnectionResetError, BrokenPipeError, pyvisa.errors.VisaIOError) as e:
+                print(traceback.format_exc())
+                print("Connection broken, attempting to reset...")
+                self.reset_pyvisa_connections()
 
         #Voltage is in volts, current is in microamps, R in Mohms
         for i in chs_to_test:
@@ -381,10 +397,10 @@ class LDOmeasure:
                 min_val = self.json_data["hv_resistance_open_min"]
 
                 if ((float(hv_results[i][j]) < max_val) and (float(hv_results[i][j]) > min_val)):
-                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]), self.rounding_factor)}Mohm")
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]), self.rounding_factor)}Mohm")
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=18+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]), self.rounding_factor)}Mohm").style = "fail"
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]), self.rounding_factor)}Mohm").style = "fail"
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
 
@@ -393,10 +409,10 @@ class LDOmeasure:
                 min_val = self.json_data["hv_resistance_term_min"]
 
                 if ((float(hv_results[i][j]) < max_val) and (float(hv_results[i][j]) > min_val)):
-                    self.ws.cell(row=self.row, column=21+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]*1E3), self.rounding_factor)}kohm")
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+3+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]*1E3), self.rounding_factor)}kohm")
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=21+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]*1E3), self.rounding_factor)}kohm").style = "fail"
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+3+(i*self.hv_cols)+(num*6), value=f"{round(float(hv_results[i][j]*1E3), self.rounding_factor)}kohm").style = "fail"
                     self.datastore['Tests'][f'hv_test_ch{i}_{j}'] = "Fail"
                     self.hv_test_result = False
 
@@ -404,17 +420,17 @@ class LDOmeasure:
                 j_on = j + "_on_fit"
                 j_off = j + "_off_fit"
                 if ((float(hv_results[i][j_on][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j_on][0][1]) > self.json_data["hv_tau_min"])):
-                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_on][0][1]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+1+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_on][0][1]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_on_fit_test_ch{i}_{j_on}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=19+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_on][0][1]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+1+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_on][0][1]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_on_fit_test_ch{i}_{j_on}'] = "Fail"
                     self.hv_test_result = False
                 if ((float(hv_results[i][j_off][0][1]) < self.json_data["hv_tau_max"]) and (float(hv_results[i][j_off][0][1]) > self.json_data["hv_tau_min"])):
-                    self.ws.cell(row=self.row, column=20+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_off][0][1]), self.rounding_factor))
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+2+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_off][0][1]), self.rounding_factor))
                     self.datastore['Tests'][f'hv_off_fit_test_ch{i}_{j_off}'] = "Pass"
                 else:
-                    self.ws.cell(row=self.row, column=20+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_off][0][1]), self.rounding_factor)).style = "fail"
+                    self.ws.cell(row=self.row, column=self.hv_res_first_col+2+(i*self.hv_cols)+(num*3), value=round(float(hv_results[i][j_off][0][1]), self.rounding_factor)).style = "fail"
                     self.datastore['Tests'][f'hv_off_fit_test_ch{i}_{j_off}'] = "Fail"
                     self.hv_test_result = False
 
@@ -438,6 +454,10 @@ class LDOmeasure:
                 neg_chs.append(self.json_data[f"pcb_ch_{i}_neg"])
                 hv_results[i] = {}
 
+            chs_string = ""
+            for i in chs_to_test:
+                chs_string = chs_string + str(i) + "_"
+
             #Measure the ramp from 0 to positive voltage with open termination
             v = self.json_data['caenR8033DM_open_voltage']
             relay_setting = 0
@@ -445,12 +465,14 @@ class LDOmeasure:
                 relay_setting = relay_setting | (1 << i)  
             for pos_ch in pos_chs:
                 self.c.set_HV_value(pos_ch, v)
-                print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with open termination")            
+                print(f"{self.prefix} --> Turning Channel {pos_ch} HV from 0 to {v}V with open termination")
+
             #self.k.set_relay(0, 1 << i) #<- how does this work?
             ramp_done = False
             while not ramp_done:
                 try:
             	    self.k.set_relay(0, relay_setting)
+            	    #input("Relays open, HV not on yet")
             	    self.c.turn_on(pos_chs)
             	    print(f"{self.prefix} --> HV reached max values, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
             	    ramp_done = True
@@ -458,15 +480,13 @@ class LDOmeasure:
                 except (ConnectionResetError, BrokenPipeError) as e:
             	    print(traceback.format_exc())
             	    print("Connection broken, attempting to reset...")
-            	    self.c.turn_off(list(range(16)), emergency=True)             	    
-            	    self.reset_pyvisa_connections()   
+            	    self.c.turn_off(list(range(16)), emergency=True)
+            	    self.reset_pyvisa_connections()
             	    self.r1.power("ON", "hvpullup")
-            	    self.r1.power("ON", "hvpullup2")            	             	         
-            
-            chs_string = ""
-            for i in chs_to_test:
-                chs_string = chs_string + str(i) + "_"
-            
+            	    self.r1.power("ON", "hvpullup2")
+
+
+
             csv_name = f"{self.test_name}_chs{chs_string}pos_open_on.csv"
             self.record_hv_data(csv_name)
             for i in chs_to_test:
@@ -474,9 +494,9 @@ class LDOmeasure:
                 fit = self.hv_curve_fit(csv_name, pos_ch, on = True, term = False)
                 hv_results[i]["pos_open_on_fit"] = fit
                 hv_results[i]["pos_open_V"] = self.c.get_voltage(pos_ch)
-                hv_results[i]["pos_open_I"] = self.c.get_current(pos_ch)            
-                self.make_plot(csv_name, f"0 to {v}V, open termination", pos_ch, fit[0][1], [v-5, v+5])
-                
+                hv_results[i]["pos_open_I"] = self.c.get_current(pos_ch)
+                self.make_plot(csv_name, f"Ch {i} from 0 to {v}V, open termination", pos_ch, fit[0][1], [v-5, v+5])
+
             ###################
 
             #Measure the ramp from positive voltage to 0 with open termination
@@ -492,7 +512,7 @@ class LDOmeasure:
                 pos_ch = self.json_data[f"pcb_ch_{i}_pos"]
                 fit = self.hv_curve_fit(csv_name, pos_ch, on = False, term = False)
                 hv_results[i]["pos_open_off_fit"] = fit
-                self.make_plot(csv_name, f"{v} to 0V, open termination", pos_ch, fit[0][1])
+                self.make_plot(csv_name, f"Ch {i} from {v} to 0V, open termination", pos_ch, fit[0][1])
 
             ###################
 
@@ -508,28 +528,38 @@ class LDOmeasure:
             	    self.c.turn_on(pos_chs)
             	    ramp_done = True
             	    print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
-            	    time.sleep(self.json_data['hv_termination_wait'])                            
+            	    time.sleep(self.json_data['hv_termination_wait'])
                 except (ConnectionResetError, BrokenPipeError) as e:
             	    print(traceback.format_exc())
             	    print("Connection broken, attempting to reset...")
-            	    self.c.turn_off(list(range(16)), emergency=True)             	    
-            	    self.reset_pyvisa_connections()   
+            	    self.c.turn_off(list(range(16)), emergency=True)
+            	    self.reset_pyvisa_connections()
             	    self.r1.power("ON", "hvpullup")
-            	    self.r1.power("ON", "hvpullup2")               
+            	    self.r1.power("ON", "hvpullup2")
 
 
             csv_name = f"{self.test_name}_ch{chs_string}_pos_term_on.csv"
-            self.record_hv_data(csv_name)
+            self.record_hv_data(csv_name, short_time=True)
             for i in chs_to_test:
-                pos_ch = self.json_data[f"pcb_ch_{i}_pos"]        
+                pos_ch = self.json_data[f"pcb_ch_{i}_pos"]
                 fit = self.hv_curve_fit(csv_name, pos_ch, on = True, term = True)
                 hv_results[i]["pos_term_on_fit"] = fit
-                hv_results[i]["pos_term_V"] = self.c.get_voltage(pos_ch)
-                hv_results[i]["pos_term_I"] = self.c.get_current(pos_ch)
-                self.make_plot(csv_name, f"0 to {v}V, termination resistor", pos_ch, fit[0][1], [v-5, v+5])
+                #hv_results[i]["pos_term_V"] = self.c.get_voltage(pos_ch)
+                #hv_results[i]["pos_term_I"] = self.c.get_current(pos_ch)
 
-            ###################            
-            
+
+                print("Measuring 10k terminated voltage and current...")
+                voltage = self.c.get_voltage(pos_ch, print_meas=True)
+                current = self.c.get_current(pos_ch, print_meas=True)
+
+                #print(f"Ch {i} voltage: {voltage}, current {current}, resistance {voltage/current}")
+                hv_results[i]["pos_term_V"] = voltage
+                hv_results[i]["pos_term_I"] = current
+
+                self.make_plot(csv_name, f"Ch {i} from 0 to {v}V, termination resistor", pos_ch, fit[0][1], [v-5, v+5])
+            time.sleep(5)
+            ###################
+
             #Measure the ramp from positive voltage to 0 with 10k termination
             for pos_ch in pos_chs:
                 print(f"{self.prefix} --> Turning Channel {pos_ch} HV from {v}V to 0 with 10k termination")
@@ -538,15 +568,15 @@ class LDOmeasure:
             # time.sleep(self.json_data['hv_stability_wait'])
 
             csv_name = f"{self.test_name}_ch{chs_string}_pos_term_off.csv"
-            self.record_hv_data(csv_name)
+            self.record_hv_data(csv_name, short_time=True)
             for i in chs_to_test:
-                pos_ch = self.json_data[f"pcb_ch_{i}_pos"]           
+                pos_ch = self.json_data[f"pcb_ch_{i}_pos"]
                 fit = self.hv_curve_fit(csv_name, pos_ch, on = False, term = True)
                 hv_results[i]["pos_term_off_fit"] = fit
-                self.make_plot(csv_name, f"{v} to 0V, termination resistor", pos_ch, fit[0][1])
+                self.make_plot(csv_name, f"Ch {i} from {v} to 0V, termination resistor", pos_ch, fit[0][1])
 
-            ###################            
-            
+            ###################
+
             #Measure the ramp from 0 to negative voltage with open termination
             v = self.json_data['caenR8033DM_open_voltage']
             for neg_ch in neg_chs:
@@ -559,14 +589,14 @@ class LDOmeasure:
             	    self.c.turn_on(neg_chs)
             	    ramp_done = True
             	    print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_stability_wait']} seconds to stabilize...")
-            	    time.sleep(self.json_data['hv_stability_wait'])                         
+            	    time.sleep(self.json_data['hv_stability_wait'])
                 except (ConnectionResetError, BrokenPipeError) as e:
             	    print(traceback.format_exc())
             	    print("Connection broken, attempting to reset...")
-            	    self.c.turn_off(list(range(16)), emergency=True)             	    
-            	    self.reset_pyvisa_connections()   
+            	    self.c.turn_off(list(range(16)), emergency=True)
+            	    self.reset_pyvisa_connections()
             	    self.r1.power("ON", "hvpullup")
-            	    self.r1.power("ON", "hvpullup2")                  
+            	    self.r1.power("ON", "hvpullup2")
 
             csv_name = f"{self.test_name}_ch{chs_string}_neg_open_on.csv"
             self.record_hv_data(csv_name)
@@ -576,10 +606,10 @@ class LDOmeasure:
                 hv_results[i]["neg_open_on_fit"] = fit
                 hv_results[i]["neg_open_V"] = self.c.get_voltage(neg_ch)
                 hv_results[i]["neg_open_I"] = self.c.get_current(neg_ch)
-                self.make_plot(csv_name, f"0 to -{v}V, open termination", neg_ch, fit[0][1], [v-5, v+5])
+                self.make_plot(csv_name, f"Ch {i} from 0 to -{v}V, open termination", neg_ch, fit[0][1], [v-5, v+5])
 
-            ###################            
-            
+            ###################
+
             #Measure the ramp from negative voltage to 0 with open termination
             for neg_ch in neg_chs:
                 print(f"{self.prefix} --> Turning Channel {neg_ch} HV from -{v}V to 0 with open termination")
@@ -590,10 +620,10 @@ class LDOmeasure:
             csv_name = f"{self.test_name}_ch{chs_string}_neg_open_off.csv"
             self.record_hv_data(csv_name)
             for i in chs_to_test:
-                neg_ch = self.json_data[f"pcb_ch_{i}_neg"]        
+                neg_ch = self.json_data[f"pcb_ch_{i}_neg"]
                 fit = self.hv_curve_fit(csv_name, neg_ch, on = False, term = False)
                 hv_results[i]["neg_open_off_fit"] = fit
-                self.make_plot(csv_name, f"-{v} to 0V, open termination", neg_ch, fit[0][1])
+                self.make_plot(csv_name, f"Ch {i} from -{v} to 0V, open termination", neg_ch, fit[0][1])
 
             ###################
             
@@ -606,29 +636,52 @@ class LDOmeasure:
             while not ramp_done:
                 try:
             	    self.k.set_relay(relay_setting, 0)
-            	    self.c.turn_on(neg_chs)
+            	    for neg_ch in neg_chs:
+                        self.c.turn_on(neg_ch)
+                        print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
+                        time.sleep(self.json_data['hv_termination_wait'])
+
+                        #Check that relay has fired correctly
+                        current = self.c.get_current(neg_ch, print_meas=True)
+                        if current < 10: #uA
+                            raise ValueError("Current too low for 10k termination mode")
             	    ramp_done = True
-            	    print(f"{self.prefix} --> HV reached max value, waiting {self.json_data['hv_termination_wait']} seconds to stabilize...")
-            	    time.sleep(self.json_data['hv_termination_wait'])                        
                 except (ConnectionResetError, BrokenPipeError) as e:
             	    print(traceback.format_exc())
             	    print("Connection broken, attempting to reset...")
             	    self.c.turn_off(list(range(16)), emergency=True)             	    
             	    self.reset_pyvisa_connections()   
             	    self.r1.power("ON", "hvpullup")
-            	    self.r1.power("ON", "hvpullup2")               
-
+            	    self.r1.power("ON", "hvpullup2")
+                except ValueError as e:
+                    print(e)
+                    #try block will run again
+                    self.c.turn_off(neg_chs)
+                    print("Resetting relays")
+                    #self.k.keysight.close()
+                    #self.k = Keysight970A(self.rm, self.json_data)
+                    #time.sleep(1)
+                    self.k.set_relay(0, relay_setting)
+                    time.sleep(1)
+                    print("Trying to fire relay again")
+                    #try block will run again
 
             csv_name = f"{self.test_name}_ch{chs_string}_neg_term_on.csv"
-            self.record_hv_data(csv_name)
+            self.record_hv_data(csv_name, short_time=True)
             for i in chs_to_test:
                 neg_ch = self.json_data[f"pcb_ch_{i}_neg"]          
                 fit = self.hv_curve_fit(csv_name, neg_ch, on = True, term = True)
                 hv_results[i]["neg_term_on_fit"] = fit
-                hv_results[i]["neg_term_V"] = self.c.get_voltage(neg_ch)
-                hv_results[i]["neg_term_I"] = self.c.get_current(neg_ch)
-                self.make_plot(csv_name, f"0 to -{v}V, termination resistor", neg_ch, fit[0][1], [v-5, v+5])
-
+                #hv_results[i]["neg_term_V"] = self.c.get_voltage(neg_ch)
+                #hv_results[i]["neg_term_I"] = self.c.get_current(neg_ch)
+                print("Measuring 10k terminated voltage and current...")
+                voltage = self.c.get_voltage(neg_ch, print_meas=True)
+                current = self.c.get_current(neg_ch, print_meas=True)
+                #print(f"Ch {i} voltage: {voltage}, current {current}, resistance {voltage/current}")
+                hv_results[i]["neg_term_V"] = voltage
+                hv_results[i]["neg_term_I"] = current
+                self.make_plot(csv_name, f"Ch {i} from 0 to -{v}V, termination resistor", neg_ch, fit[0][1], [v-5, v+5])
+            time.sleep(5) #debug
             ###################            
             
             #Measure the ramp from 0 to negative voltage with 10k termination
@@ -639,24 +692,15 @@ class LDOmeasure:
             # time.sleep(self.json_data['hv_stability_wait'])
 
             csv_name = f"{self.test_name}_ch{chs_string}_neg_term_off.csv"
-            self.record_hv_data(csv_name)
+            self.record_hv_data(csv_name, short_time=True)
             for i in chs_to_test:
                 neg_ch = self.json_data[f"pcb_ch_{i}_neg"]              
                 fit = self.hv_curve_fit(csv_name, neg_ch, on = False, term = True)
                 hv_results[i]["neg_term_off_fit"] = fit
-                self.make_plot(csv_name, f"-{v} to 0V, termination resistor", neg_ch, fit[0][1])
+                self.make_plot(csv_name, f"Ch {i} from -{v} to 0V, termination resistor", neg_ch, fit[0][1])
 
             ###################            
-            relay_done = False
-            while not relay_done:
-                try:
-            	    self.r1.power("OFF", "hvpullup")
-            	    self.r1.power("OFF", "hvpullup2") 
-            	    relay_done = True                     
-                except (ConnectionResetError, BrokenPipeError, pyvisa.errors.VisaIOError) as e:
-            	    print(traceback.format_exc())
-            	    print("Connection broken, attempting to reset...")           	    
-            	    self.reset_pyvisa_connections()              
+
 
             
     def emergency_shutoff(self):
@@ -683,13 +727,17 @@ class LDOmeasure:
         self.k.keysight.close()
         self.k = Keysight970A(self.rm, self.json_data)    
     	
-    def record_hv_data(self, name):
+    def record_hv_data(self, name, short_time=False):
         data = []
         cycle_start_time = time.time()
         time_string = datetime.fromtimestamp(cycle_start_time)
         prev_measurement = cycle_start_time - 1
-        print(f"{self.prefix} --> Collecting data for {name} for {self.json_data['hv_minutes_duration']} minutes starting at {time_string}...")
-        while (time.time() - cycle_start_time < (self.json_data['hv_minutes_duration'] * 60)):
+        if short_time:
+            minutes_wait = self.json_data['hv_minutes_duration_short']
+        else:
+            minutes_wait = self.json_data['hv_minutes_duration_long']
+        print(f"{self.prefix} --> Collecting data for {name} for {minutes_wait} minutes starting at {time_string}...")
+        while (time.time() - cycle_start_time < (minutes_wait * 60)):
             if (time.time() > prev_measurement + self.json_data['hv_seconds_interval']):
                 #print(f"{self.prefix} --> Measurement taken at {time.time()}")
                 prev_measurement = prev_measurement + self.json_data['hv_seconds_interval']
@@ -697,6 +745,7 @@ class LDOmeasure:
                 for i in range(16):
                     datum.append(self.c.get_voltage(i))
                     datum.append(self.c.get_current(i))
+                #datum.append(self.c.get_voltage(list(range(16))))
                 data.append(datum)
         with open(os.path.join(self.results_path, name), 'w') as fp:
             csv_writer = csv.writer(fp, delimiter=',')
@@ -750,19 +799,19 @@ class LDOmeasure:
         #https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
         return fit
 
-    def make_hv_plots(self):
+    def make_hv_plots(self): #not used
         ch0_pos_open_fit = self.datastore['hv_ch0']['pos_open_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_pos_open_on", "0 to 2kV, open termination", True, True, 0, ch0_pos_open_fit)
+        self.make_plot(f"{self.test_name}_ch0_pos_open_on", "Ch {i} from 0 to 2kV, open termination", True, True, 0, ch0_pos_open_fit)
         # self.make_plot(f"{self.test_name}_ch0_pos_open_off", "2kV to 0, open termination", False, True)
         ch0_pos_term_fit = self.datastore['hv_ch0']['pos_term_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_pos_10k_on", "0 to 2kV, 10k termination", True, True, 0, ch0_pos_term_fit)
+        self.make_plot(f"{self.test_name}_ch0_pos_10k_on", "Ch {i} from 0 to 2kV, 10k termination", True, True, 0, ch0_pos_term_fit)
         #self.make_plot(f"{self.test_name}_ch0_pos_10k_off", "2kV to 0, 10k termination", False, True, 0)
 
         ch0_neg_open_fit = self.datastore['hv_ch0']['neg_open_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_neg_open_on", "0 to -2kV, open termination", True, False, 8, ch0_neg_open_fit)
+        self.make_plot(f"{self.test_name}_ch0_neg_open_on", "Ch {i} from 0 to -2kV, open termination", True, False, 8, ch0_neg_open_fit)
         # self.make_plot(f"{self.test_name}_ch0_neg_open_off", "-2kV to 0, open termination", False, False)
         ch0_neg_term_fit = self.datastore['hv_ch0']['neg_term_fit'][0][1]
-        self.make_plot(f"{self.test_name}_ch0_neg_10k_on", "0 to -2kV, 10k termination", True, False, 8, ch0_neg_term_fit)
+        self.make_plot(f"{self.test_name}_ch0_neg_10k_on", "Ch {i} from 0 to -2kV, 10k termination", True, False, 8, ch0_neg_term_fit)
         #self.make_plot(f"{self.test_name}_ch0_neg_10k_off", "-2kV to 0, 10k termination", False, True, 8)
 
     def make_plot(self, filename, name, ch, fit=None, axes = None):
@@ -774,11 +823,18 @@ class LDOmeasure:
 
         ax.plot(ch1_time, ch1_current, label="Ch Current")
         self.format_plot(ax)
+                                           
+                                   
+                                             
 
         ax2 = ax.twinx()
+                                                                  
+                      
         ax2.plot(ch1_time, ch1_voltage, label="Ch Voltage", color="red")
+                                                                                                             
 
         fig.suptitle((name), fontsize=36)
+                                
 
         ax.set_xlabel("Time (Minutes:Seconds)", fontsize=24)
         ax.set_ylabel("Current (uA)", fontsize=24)
@@ -797,7 +853,7 @@ class LDOmeasure:
 
         fig.legend(loc='lower left', prop={'size': 20}, ncol=2)
         stem = Path(filename).stem
-        fig.savefig(os.path.join(self.results_path, f"{stem}.png"))
+        fig.savefig(os.path.join(self.results_path, f"{stem}_ch{ch}.png"))
         plt.close(fig)
 
     def get_ch_data(self, data_file, ch):
