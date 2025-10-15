@@ -115,28 +115,6 @@ class CAENR8033DM_WRAPPER:
 
     #These functions basically get and set different parameters of each channel, with a variable amount of channels as the input
     def get_voltage(self, ch, num_avgs=5, print_meas=False):
-        # #throwaway measurements
-        # self.caen.get_channel_parameter_value(ch, "VMon", print_meas)
-        # self.caen.get_channel_parameter_value(ch, "VMon", print_meas)
-        # if type(ch) is list:
-        #     total = [0] * len(ch)
-        #     for n in range(num_avgs):
-        #         #total = total + self.caen.get_channel_parameter_value(ch, "VMon")
-        #         #print(len(self.caen.get_channel_parameter_value(ch, "VMon")))
-        #         total = [sum(chn) for chn in zip(total, self.caen.get_channel_parameter_value(ch, "VMon", print_meas))]
-        #     return_vals = [tot / num_avgs for tot in total]
-        # else:
-        #     total = 0
-        #     for n in range(num_avgs):
-        #         voltage = self.caen.get_channel_parameter_value(ch, "VMon")
-        #         #print(f"{self.prefix} --> Channel {ch} voltage: {voltage}")
-        #         total = total + voltage
-        #     return_vals = total / num_avgs
-        # #throwaway measurements
-        # self.caen.get_channel_parameter_value(ch, "VMon", print_meas)
-        # self.caen.get_channel_parameter_value(ch, "VMon", print_meas)
-        # self.caen.get_channel_parameter_value(ch, "VMon", print_meas)
-        # return return_vals
         return self.caen.get_channel_parameter_value(ch, "VMon", print_meas)
         
     def set_HV_value(self, ch, voltage):
@@ -154,27 +132,6 @@ class CAENR8033DM_WRAPPER:
         return self.caen.get_channel_parameter_value(ch, "ISet")
 
     def get_current(self, ch, num_avgs=5, print_meas=False):
-        #throwaway measurements
-        # self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
-        # self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
-        # if type(ch) is list:
-        #     total = [0] * len(ch)
-        #     for n in range(num_avgs):
-        #         #print(len(self.caen.get_channel_parameter_value(ch, "IMon")))
-        #         total = [sum(chn) for chn in zip(total, self.caen.get_channel_parameter_value(ch, "IMon", print_meas))]
-        #     return_vals = [tot / num_avgs for tot in total]
-        # else:
-        #     total = 0
-        #     for n in range(num_avgs):
-        #         current = self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
-        #         #print(f"{self.prefix} --> Channel {ch} current: {current}")
-        #         total = total + current
-        #     return_vals = total / num_avgs
-        # #throwaway measurements
-        # self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
-        # self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
-        # self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
-        # return return_vals
         return self.caen.get_channel_parameter_value(ch, "IMon", print_meas)
 
     def set_current_range(self, ch, value):

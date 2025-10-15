@@ -111,31 +111,11 @@ class Keysight970A:
             return 0
         if (term < 0 or term > 255):
             print(f"{self.prefix} --> HV value is {term}, it needs to be between 0 and 255")
-        #     return 0
-        # self.keysight.write(f"SOURce:DIGital:DATA:BYTE {hv},(@{self.json_data['keysight970a_907A_slot']}01)")
-        # self.keysight.write(f"SOURce:DIGital:DATA:BYTE {term},(@{self.json_data['keysight970a_907A_slot']}02)")
-        if self.relay_hv_state is None or self.relay_term_state is None: #initial states
-            self.keysight.write(f"SOURce:DIGital:DATA:BYTE {hv},(@{self.json_data['keysight970a_907A_slot']}01)")
-            self.keysight.write(f"SOURce:DIGital:DATA:BYTE {term},(@{self.json_data['keysight970a_907A_slot']}02)")
-        else:
-            #slowly set relays from right to left for each set
-            print("hv old:",format(self.relay_hv_state, '#010b'),", new:",format(hv, '#010b'))
-            print("term old:",format(self.relay_term_state, '#010b'),", new:",format(term, '#010b'))
-            for relay_bit in range(8):
-                new_mask = 255 >> (7-relay_bit)
-                old_mask = (~new_mask) & 255
-                hv_temp_val= (self.relay_hv_state & old_mask) | (hv & new_mask)
-                print("Sending hv "+format(hv_temp_val, '#010b'))
-                self.keysight.write(f"SOURce:DIGital:DATA:BYTE {hv_temp_val},(@{self.json_data['keysight970a_907A_slot']}01)")
-                time.sleep(1)
-                term_temp_val= (self.relay_term_state & old_mask) | (term & new_mask)
-                print("Sending term "+format(term_temp_val, '#010b'))
-                self.keysight.write(f"SOURce:DIGital:DATA:BYTE {term_temp_val},(@{self.json_data['keysight970a_907A_slot']}02)")
-                time.sleep(1)
+            return 0
 
+        self.keysight.write(f"SOURce:DIGital:DATA:BYTE {hv},(@{self.json_data['keysight970a_907A_slot']}01)")
+        self.keysight.write(f"SOURce:DIGital:DATA:BYTE {term},(@{self.json_data['keysight970a_907A_slot']}02)")
 
-        self.relay_hv_state = hv
-        self.relay_term_state = term
 
     def measure_rtd(self):
         if (self.state != "rtd"):
